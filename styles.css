@@ -1492,8 +1492,8 @@ code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shad
         }
         .step-prompt {
             font-family: var(--font-code);
-            user-select: text;
-            -webkit-user-select: text;
+            user-select: none;
+            -webkit-user-select: none;
             font-size: 0.7rem;
             color: var(--accent);
             background: var(--accent-dim);
@@ -1504,7 +1504,6 @@ code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shad
             transition: color var(--transition), background var(--transition);
         }
         .step-prompt::before { content: '💬 '; }
-        .step-prompt-wrapper .no-copy-hint { display: none; }
 
         .milestone-tag {
             display: inline-block;
