@@ -505,6 +505,7 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
             claude: 'claude',
             openai: 'gpt'
         };
+        const DEFAULT_MODEL_TAB = 'gemini';
 
         function normalizePath(pathname) {
             if (!pathname) return '/';
@@ -528,7 +529,9 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
         }
 
         function modelQuerySlugFromTab(tabName) {
-            return MODEL_QUERY_BY_TAB[normalizeModelTab(tabName)];
+            const normalized = normalizeModelTab(tabName);
+            if (normalized === DEFAULT_MODEL_TAB) return null;
+            return MODEL_QUERY_BY_TAB[normalized];
         }
 
         function activeModelTab() {
@@ -545,7 +548,12 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
             const url = new URL(window.location.href);
             url.pathname = pathname;
             if (shouldIncludeModelQuery(pathname)) {
-                url.searchParams.set('model', modelQuerySlugFromTab(activeModelTab()));
+                const modelSlug = modelQuerySlugFromTab(activeModelTab());
+                if (modelSlug) {
+                    url.searchParams.set('model', modelSlug);
+                } else {
+                    url.searchParams.delete('model');
+                }
             } else {
                 url.searchParams.delete('model');
             }
@@ -558,7 +566,11 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
             const url = new URL(window.location.href);
             const modelSlug = modelQuerySlugFromTab(tabName);
             if (shouldIncludeModelQuery(url.pathname)) {
-                url.searchParams.set('model', modelSlug);
+                if (modelSlug) {
+                    url.searchParams.set('model', modelSlug);
+                } else {
+                    url.searchParams.delete('model');
+                }
             } else {
                 url.searchParams.delete('model');
             }
