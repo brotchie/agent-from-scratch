@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="icon" href="/favicon.ico" sizes="any">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M125QY2PWF"></script>
+    <script>
+      if (window.location.origin === 'https://agentfromscratch.com') {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-M125QY2PWF');
+      }
+    </script>
     <title>Agent From Scratch</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -773,6 +783,8 @@
             max-height: none;
             overflow-y: visible;
             transition: color var(--transition);
+            -webkit-user-select: text;
+            user-select: text;
         }
         .snippet-code.active { display: block; }
         .snippet-code[class*="language-"],
@@ -796,6 +808,8 @@
             line-height: inherit;
             white-space: inherit;
             overflow-wrap: inherit;
+            -webkit-user-select: text;
+            user-select: text;
         }
         .snippet-code .token.comment,
         .snippet-code .token.prolog,
@@ -899,7 +913,6 @@
             -webkit-text-fill-color: var(--bg);
             color: var(--bg);
         }
-
         .safety-popover {
             border: none;
             padding: 0;
@@ -1032,6 +1045,8 @@
             white-space: pre-wrap;
             overflow-wrap: anywhere;
             margin: 0;
+            -webkit-user-select: text;
+            user-select: text;
         }
         .full-snippet.active { display: block; }
         .full-snippet[class*="language-"],
@@ -1055,6 +1070,8 @@
             line-height: inherit;
             white-space: inherit;
             overflow-wrap: inherit;
+            -webkit-user-select: text;
+            user-select: text;
         }
         .full-snippet .token.comment,
         .full-snippet .token.prolog,
@@ -1461,15 +1478,28 @@
                 text-align: center;
                 order: 2;
                 margin: 0;
-                padding-top: 1.25rem;
+                padding-top: 0.3125rem;
             }
             .copy-btn {
                 order: 1;
                 align-self: center;
+                font-size: 0.825rem;
+                padding: 0.5rem 0.94rem;
+                min-width: 8.75rem;
+            }
+            .challenge-link-btn {
+                opacity: 1;
+                pointer-events: auto;
+                transform: translateY(0) scale(1);
             }
             .safety-popover {
                 width: calc(100vw - 0.5rem);
-                max-height: calc(100vh - 0.5rem);
+                height: 70vh;
+                max-height: 70vh;
+            }
+            .safety-dialog {
+                height: 100%;
+                max-height: 100%;
             }
             .safety-header {
                 flex-wrap: wrap;
@@ -2190,6 +2220,18 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
                 event.preventDefault();
                 event.stopPropagation();
                 const url = `${window.location.origin}/challenges#${slug}`;
+                if (isMobileLikePointer() && navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Agent From Scratch',
+                            text: challengeName,
+                            url
+                        });
+                        return;
+                    } catch (err) {
+                        if (err && err.name === 'AbortError') return;
+                    }
+                }
                 try {
                     await copyTextToClipboard(url);
                     markChallengeLinkCopied(btn);
@@ -2466,6 +2508,11 @@ chmod +x afs.py
             selection.addRange(range);
         }
 
+        function isMobileLikePointer() {
+            if (!window.matchMedia) return false;
+            return window.matchMedia('(pointer: coarse), (hover: none)').matches;
+        }
+
         function resetFullCopyButton() {
             const btn = document.querySelector('.copy-full-btn');
             const dialog = document.getElementById('safetyDialog');
@@ -2480,9 +2527,8 @@ chmod +x afs.py
         function copyFullGenesis() {
             const activeFullSnippet = document.querySelector('.full-snippet.active');
             if (!activeFullSnippet) return;
-            selectCodeText(activeFullSnippet);
             const text = activeFullSnippet.textContent;
-            navigator.clipboard.writeText(text).then(() => {
+            copyTextToClipboard(text).then(() => {
                 const btn = document.querySelector('.copy-full-btn');
                 const dialog = document.getElementById('safetyDialog');
                 const bytes = new Blob([text]).size;
@@ -2502,40 +2548,58 @@ chmod +x afs.py
                 window._fullCopyMagicTimer = setTimeout(() => {
                     dialog.classList.remove('magic');
                 }, 1000);
+                if (!isMobileLikePointer()) {
+                    selectCodeText(activeFullSnippet);
+                }
+            }).catch(() => {
+                const btn = document.querySelector('.copy-full-btn');
+                if (!btn) return;
+                selectCodeText(activeFullSnippet);
+                btn.classList.remove('copied');
+                btn.textContent = 'Copy Full Genesis';
             });
         }
 
         function copySnippet() {
             const active = document.querySelector('.snippet-code.active');
-            selectCodeText(active);
+            if (!active) return;
             const text = active.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.copy-btn');
-                const panel = document.getElementById('snippetPanel');
+            const btn = document.querySelector('.copy-btn');
+            const panel = document.getElementById('snippetPanel');
+            if (!btn || !panel) return;
 
+            // Always run the panel animation, even if clipboard APIs are blocked on mobile.
+            panel.classList.remove('magic');
+            void panel.offsetWidth; // force reflow
+            panel.classList.add('magic');
+            if (window._copyMagicTimer) clearTimeout(window._copyMagicTimer);
+            window._copyMagicTimer = setTimeout(() => {
+                panel.classList.remove('magic');
+            }, 1000);
+
+            copyTextToClipboard(text).then(() => {
                 const bytes = new Blob([text]).size;
                 setCopyButtonLabel(`Copied ${bytes.toLocaleString()}B`);
                 btn.classList.add('copied');
 
-                // Trigger magic animation
-                panel.classList.remove('magic');
-                void panel.offsetWidth; // force reflow
-                panel.classList.add('magic');
-
+                if (window._copyResetTimer) clearTimeout(window._copyResetTimer);
                 window._copyResetTimer = setTimeout(() => {
                     setCopyButtonLabel('Copy Genesis');
                     btn.classList.remove('copied');
                 }, 4000);
-
-                window._copyMagicTimer = setTimeout(() => {
-                    panel.classList.remove('magic');
-                }, 1000);
 
                 // Show help pane after 5s
                 clearTimeout(window._helpTimer);
                 window._helpTimer = setTimeout(() => {
                     document.getElementById('helpPane').classList.add('show');
                 }, 5000);
+                if (!isMobileLikePointer()) {
+                    selectCodeText(active);
+                }
+            }).catch(() => {
+                selectCodeText(active);
+                btn.classList.remove('copied');
+                setCopyButtonLabel('Copy Genesis');
             });
         }
 
