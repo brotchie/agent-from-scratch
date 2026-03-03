@@ -2173,12 +2173,26 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
             });
         }
 
-        function copySectionAnchor(anchorId, btn, event) {
+        async function copySectionAnchor(anchorId, btn, event) {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
             const url = `${window.location.origin}/#${anchorId}`;
+
+            if (isMobileLikePointer() && navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Agent From Scratch',
+                        text: anchorId.replace(/-/g, ' '),
+                        url
+                    });
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+
             copyTextToClipboard(url).then(() => {
                 if (!btn) return;
                 if (btn._copiedResetTimer) clearTimeout(btn._copiedResetTimer);
