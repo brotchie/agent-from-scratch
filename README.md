@@ -68,7 +68,9 @@ Use this top-level JSON object:
 - `agent_name`: string
 - `genesis_snippet`: string
 - `model_response`: string containing the raw model response used to extract/build the generated agent REPL
-- `user_prompts`: array of strings in chronological order
+- `turns`: array of turn objects in chronological order, each with:
+  - `type`: `"user"` or `"agent"`
+  - `content`: markdown string
 - `agent_description_md`: markdown string (can reference images in `images/`)
 
 Recommended submitter fields:
@@ -89,10 +91,27 @@ Recommended submitter fields:
   "agent_name": "helios",
   "genesis_snippet": "read -p \"Gemini API key: \" k && ... && ./afs.py",
   "model_response": "{ \"candidates\": [ { \"content\": { \"parts\": [ { \"text\": \"#!/usr/bin/env python3\\n...generated agent REPL...\" } ] } } ] }",
-  "user_prompts": [
-    "Rewrite yourself to support disk-backed history.",
-    "Add a /restart command and preserve conversation state.",
-    "Integrate Telegram long polling."
+  "turns": [
+    {
+      "type": "user",
+      "content": "Rewrite yourself to support disk-backed history."
+    },
+    {
+      "type": "agent",
+      "content": "Implemented history persistence in `~/.afs_history` and added load/save behavior."
+    },
+    {
+      "type": "user",
+      "content": "Add a /restart command and preserve conversation state."
+    },
+    {
+      "type": "agent",
+      "content": "Added `/restart` that checkpoints conversation to disk and rehydrates on boot."
+    },
+    {
+      "type": "user",
+      "content": "Integrate Telegram long polling."
+    }
   ],
   "agent_description_md": "# Helios\n\nHelios is a self-rewriting CLI agent focused on reliability and low token usage.\n\n## Highlights\n\n- Self-upgrading REPL\n- Tool output summarization\n- Telegram interface\n\n## Screenshots\n\n![Terminal run](images/terminal-run.png)\n![Telegram chat](images/telegram-chat.png)"
 }
@@ -105,6 +124,7 @@ Recommended submitter fields:
 - Files placed in the expected path
 - PR description is clear and complete
 - Polis submissions include both `genesis_snippet` and `model_response`
+- Polis submissions include `turns` with both user and agent messages where possible
 - Code golf/challenge PRs directly modify the site to reflect your claimed win
 - Challenge site updates include the submitter's Twitter handle
 - Challenge PRs include a new or existing Polis submission

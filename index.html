@@ -1422,8 +1422,8 @@
         }
         .step-prompt {
             font-family: var(--font-code);
-            user-select: none;
-            -webkit-user-select: none;
+            user-select: text;
+            -webkit-user-select: text;
             font-size: 0.7rem;
             color: var(--accent);
             background: var(--accent-dim);
@@ -1434,6 +1434,7 @@
             transition: color var(--transition), background var(--transition);
         }
         .step-prompt::before { content: '💬 '; }
+        .step-prompt-wrapper .no-copy-hint { display: none; }
 
         .milestone-tag {
             display: inline-block;
@@ -1562,7 +1563,7 @@ curl -s "https://api.anthropic.com/v1/messages" \
 -H "x-api-key: $ANTHROPIC_API_KEY" \
 -H "anthropic-version: 2023-06-01" \
 -H 'Content-Type: application/json' -X POST \
--d '{"model":"claude-sonnet-4-20250514","max_tokens":8192,"messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-sonnet-4-20250514)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
+-d '{"model":"claude-opus-4-6","max_tokens":8192,"messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-opus-4-6)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
 C
 echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&gt; afs.log &amp;&amp; echo "$r" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = "".join(block.get("text","") for block in data.get("content",[]) if block.get("type")=="text").strip(); print(text[text.find("#!"):text.rfind("```")] if "```" in text else text)' &gt; afs.py &amp;&amp; chmod +x afs.py &amp;&amp; ./afs.py
 </code></pre>
@@ -1579,7 +1580,7 @@ echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&g
 curl -s "https://api.openai.com/v1/chat/completions" \
 -H "Authorization: Bearer $OPENAI_API_KEY" \
 -H 'Content-Type: application/json' -X POST \
--d '{"model":"gpt-4.1","messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-4.1)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
+-d '{"model":"gpt-5.2","messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-5.2)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
 C
 echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&gt; afs.log &amp;&amp; echo "$r" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = data["choices"][0]["message"]["content"]; text = "".join(p.get("text","") if isinstance(p,dict) else str(p) for p in text) if isinstance(text,list) else text; text = text.strip(); print(text[text.find("#!"):text.rfind("```")] if "```" in text else text)' &gt; afs.py &amp;&amp; chmod +x afs.py &amp;&amp; ./afs.py
 </code></pre>
@@ -2354,12 +2355,12 @@ curl -s "https://api.anthropic.com/v1/messages" \
   -H 'Content-Type: application/json' \
   -X POST \
   -d '{
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-opus-4-6",
     "max_tokens": 8192,
     "messages": [
       {
         "role": "user",
-        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-sonnet-4-20250514)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
+        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-opus-4-6)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
       }
     ]
   }'
@@ -2393,11 +2394,11 @@ curl -s "https://api.openai.com/v1/chat/completions" \
   -H 'Content-Type: application/json' \
   -X POST \
   -d '{
-    "model": "gpt-4.1",
+    "model": "gpt-5.2",
     "messages": [
       {
         "role": "user",
-        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-4.1)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
+        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-5.2)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
       }
     ]
   }'
