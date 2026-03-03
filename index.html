@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <title>Agent From Scratch</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style id="prism-inline">code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shadow:0 1px #fff;font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection{text-shadow:none;background:#b3d4fc}code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=language-],pre[class*=language-]{text-shadow:none}}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=language-],pre[class*=language-]{background:#f5f2f0}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#708090}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag{color:#905}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#690}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url{color:#9a6e3a;background:hsla(0,0%,100%,.5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.class-name,.token.function{color:#dd4a68}.token.important,.token.regex,.token.variable{color:#e90}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}</style>
     <style>
         /* ========== THEME SYSTEM ========== */
         :root {
             --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --snippet-font-size: 0.68rem;
         }
 
         /* Terminal (default) — green on black */
@@ -134,9 +137,63 @@
             border-radius: var(--radius);
             padding: 1rem 1.15rem;
             transition: all 0.2s;
+            position: relative;
         }
         .challenge-card:hover {
             border-color: rgba(255,255,255,0.15);
+        }
+        .challenge-card.link-target {
+            border-color: var(--accent);
+            box-shadow: 0 0 22px var(--accent-dim);
+        }
+        .challenge-link-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-4px) scale(0.92);
+            transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .challenge-card:hover .challenge-link-btn,
+        .challenge-card:focus-within .challenge-link-btn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+        .challenge-link-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-dim);
+        }
+        .challenge-link-btn.copied {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1.03);
+            color: var(--bg);
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+        .challenge-link-btn svg {
+            width: 0.78rem;
+            height: 0.78rem;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         .challenge-card-title {
             font-size: 0.9rem;
@@ -247,6 +304,11 @@
             transition: color var(--transition);
         }
 
+        @media (min-width: 481px) {
+            h1 { margin-top: 3rem; }
+            .tagline { margin-bottom: 3rem; }
+        }
+
         .tagline .hl {
             color: var(--highlight);
             font-weight: 700;
@@ -271,6 +333,13 @@
             transition: color var(--transition);
         }
         .credits a:hover { text-decoration: underline; }
+        .naviclaw-gradient {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 600;
+        }
 
         /* ========== STEP HEADERS ========== */
         .step-header {
@@ -660,60 +729,414 @@
         }
         .pr-link:hover .gh-icon-inline { filter: brightness(1); }
 
-        .snippet-content { position: relative; }
+        .snippet-content {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .snippet-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1.25rem 1.25rem 0;
+        }
+        .snippet-safe-link {
+            border: none;
+            background: transparent;
+            padding: 0;
+            color: var(--text2);
+            font-size: 0.68rem;
+            font-weight: 500;
+            text-decoration-line: underline;
+            text-decoration-style: dashed;
+            text-underline-offset: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+        }
+        .snippet-safe-link:hover {
+            color: var(--text);
+        }
 
         .snippet-code {
             display: none;
-            padding: 1.25rem;
+            padding: 1.25rem 1.25rem 1.25rem;
             font-family: var(--font-code);
-            font-size: 0.72rem;
+            font-size: var(--snippet-font-size);
             line-height: 1.7;
             color: var(--text2);
-            overflow-x: auto;
+            overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            white-space: pre;
-            max-height: 400px;
-            overflow-y: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: none;
+            overflow-y: visible;
             transition: color var(--transition);
         }
         .snippet-code.active { display: block; }
+        .snippet-code[class*="language-"],
+        .snippet-code code[class*="language-"] {
+            background: transparent;
+            color: var(--text2);
+            text-shadow: none;
+            font-size: var(--snippet-font-size);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .snippet-code[class*="language-"] {
+            padding: 1.25rem 1.25rem 1.25rem;
+            margin: 0;
+        }
+        .snippet-code code {
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            white-space: inherit;
+            overflow-wrap: inherit;
+        }
+        .snippet-code .token.comment,
+        .snippet-code .token.prolog,
+        .snippet-code .token.doctype,
+        .snippet-code .token.cdata { color: #555570; }
+        .snippet-code .token.string,
+        .snippet-code .token.attr-value { color: var(--accent); }
+        .snippet-code .token.keyword,
+        .snippet-code .token.boolean,
+        .snippet-code .token.function,
+        .snippet-code .token.builtin { color: var(--highlight); }
+        .snippet-code .token.variable,
+        .snippet-code .token.parameter { color: var(--step2); }
+        .snippet-code .token.number { color: var(--step2); }
+        .snippet-code .token.operator,
+        .snippet-code .token.punctuation { color: var(--text2); }
+        .snippet-code .token.operator,
+        .snippet-code .token.entity,
+        .snippet-code .token.url {
+            background: transparent;
+        }
+        .snippet-code .token.filename { color: #ddddf0; }
         .snippet-code .comment { color: #555570; }
         .snippet-code .string { color: var(--accent); }
         .snippet-code .cmd { color: var(--highlight); }
         .snippet-code .var { color: var(--step2); }
+        .snippet-code ::selection {
+            background: #6f6f76;
+            color: #f4f4f7;
+            text-shadow: none;
+        }
+        .snippet-code ::-moz-selection {
+            background: #6f6f76;
+            color: #f4f4f7;
+            text-shadow: none;
+        }
+        .snippet-code pre[class*="language-"]::selection,
+        .snippet-code pre[class*="language-"] *::selection,
+        .snippet-code code[class*="language-"]::selection,
+        .snippet-code code[class*="language-"] *::selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
+        .snippet-code pre[class*="language-"]::-moz-selection,
+        .snippet-code pre[class*="language-"] *::-moz-selection,
+        .snippet-code code[class*="language-"]::-moz-selection,
+        .snippet-code code[class*="language-"] *::-moz-selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
 
         /* amber overrides removed */
 
         .copy-btn {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
+            position: static;
             padding: 0.4rem 0.75rem;
             border-radius: 8px;
             font-size: 0.7rem;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s;
             z-index: 2;
+            flex-shrink: 0;
             min-width: 7rem;
             text-align: center;
-        }
-        .copy-btn {
-            background: var(--surface);
-            border: 1px solid var(--accent);
-            color: var(--accent);
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(90deg, var(--accent), var(--highlight), var(--accent)) border-box;
+            background-size: 100% 100%, 200% 100%;
+            background-position: 0 0, 0% 50%;
+            border: 1px solid transparent;
             box-shadow: 0 0 12px var(--accent-dim), 0 0 4px var(--accent-dim);
-            transition: all 0.2s;
+            transition: box-shadow 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
+            animation: genesis-shimmer 3s ease-in-out infinite;
+        }
+        .copy-btn .copy-btn-label {
+            background: linear-gradient(90deg, var(--accent), var(--highlight), var(--accent));
+            background-size: 200% 100%;
+            background-position: 0% 50%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            animation: genesis-shimmer 3s ease-in-out infinite;
         }
         .copy-btn:hover {
             box-shadow: 0 0 20px var(--accent-glow), 0 0 8px var(--accent-dim);
         }
         .copy-btn.copied {
+            animation: none;
             background: var(--accent);
             color: var(--bg);
             border-color: var(--accent);
             box-shadow: 0 0 24px var(--accent-glow);
+        }
+        .copy-btn.copied .copy-btn-label {
+            animation: none;
+            background: none;
+            -webkit-text-fill-color: var(--bg);
+            color: var(--bg);
+        }
+
+        .safety-popover {
+            border: none;
+            padding: 0;
+            background: transparent;
+            color: inherit;
+            width: min(940px, calc(100vw - 1rem));
+            max-height: calc(100vh - 1rem);
+            position: fixed;
+            inset: 0;
+            margin: auto;
+        }
+        .safety-popover::backdrop {
+            background: rgba(6, 10, 16, 0);
+            backdrop-filter: blur(0);
+            -webkit-backdrop-filter: blur(0);
+            transition: background 0.22s ease, backdrop-filter 0.22s ease, -webkit-backdrop-filter 0.22s ease;
+        }
+        .safety-popover:popover-open::backdrop {
+            background: rgba(6, 10, 16, 0.78);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+        .safety-dialog {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 1rem);
+            overflow: hidden;
+            box-shadow: 0 20px 64px rgba(0, 0, 0, 0.45);
+        }
+        .safety-popover:popover-open .safety-dialog {
+            animation: safety-dialog-fade-in 0.2s ease-out both;
+        }
+        @keyframes safety-dialog-fade-in {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .safety-dialog.magic {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow), 0 0 60px rgba(255,255,255,0.05);
+            animation: panel-glow 0.8s ease-out forwards;
+        }
+        .safety-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .safety-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .safety-subtitle {
+            color: var(--text2);
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+        .safety-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .copy-full-btn {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-dim), 0 0 4px var(--accent-dim);
+            transition: all 0.2s;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            min-width: 8.5rem;
+            text-align: center;
+        }
+        .copy-full-btn:hover {
+            box-shadow: 0 0 20px var(--accent-glow), 0 0 8px var(--accent-dim);
+        }
+        .copy-full-btn.copied {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+            box-shadow: 0 0 24px var(--accent-glow);
+        }
+        .safety-body {
+            overflow-x: hidden;
+            overflow-y: scroll;
+            scrollbar-gutter: stable;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(180, 180, 196, 0.55) transparent;
+            flex: 1;
+        }
+        .safety-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        .safety-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .safety-body::-webkit-scrollbar-thumb {
+            background: rgba(180, 180, 196, 0.55);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+        .safety-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(180, 180, 196, 0.75);
+            background-clip: content-box;
+        }
+        .full-snippet {
+            display: none;
+            padding: 1rem 1rem 1.25rem;
+            font-family: var(--font-code);
+            font-size: var(--snippet-font-size);
+            line-height: 1.7;
+            color: var(--text2);
+            overflow-x: hidden;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            margin: 0;
+        }
+        .full-snippet.active { display: block; }
+        .full-snippet[class*="language-"],
+        .full-snippet code[class*="language-"] {
+            background: transparent;
+            color: var(--text2);
+            text-shadow: none;
+            font-size: var(--snippet-font-size);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .full-snippet[class*="language-"] {
+            margin: 0;
+            padding: 1rem 1rem 1.25rem;
+        }
+        .full-snippet code {
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            white-space: inherit;
+            overflow-wrap: inherit;
+        }
+        .full-snippet .token.comment,
+        .full-snippet .token.prolog,
+        .full-snippet .token.doctype,
+        .full-snippet .token.cdata { color: #555570; }
+        .full-snippet .token.string,
+        .full-snippet .token.attr-value { color: var(--accent); }
+        .full-snippet .token.keyword,
+        .full-snippet .token.boolean,
+        .full-snippet .token.function,
+        .full-snippet .token.builtin { color: var(--highlight); }
+        .full-snippet .token.variable,
+        .full-snippet .token.parameter,
+        .full-snippet .token.number { color: var(--step2); }
+        .full-snippet .token.operator,
+        .full-snippet .token.punctuation { color: var(--text2); }
+        .full-snippet .token.operator,
+        .full-snippet .token.entity,
+        .full-snippet .token.url { background: transparent; }
+        .full-snippet .token.filename { color: #ddddf0; }
+        .full-snippet ::selection {
+            background: #6f6f76;
+            color: #f4f4f7;
+            text-shadow: none;
+        }
+        .full-snippet ::-moz-selection {
+            background: #6f6f76;
+            color: #f4f4f7;
+            text-shadow: none;
+        }
+        .full-snippet pre[class*="language-"]::selection,
+        .full-snippet pre[class*="language-"] *::selection,
+        .full-snippet code[class*="language-"]::selection,
+        .full-snippet code[class*="language-"] *::selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
+        .full-snippet pre[class*="language-"]::-moz-selection,
+        .full-snippet pre[class*="language-"] *::-moz-selection,
+        .full-snippet code[class*="language-"]::-moz-selection,
+        .full-snippet code[class*="language-"] *::-moz-selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
+        .safety-body pre[class*="language-"]::selection,
+        .safety-body pre[class*="language-"] *::selection,
+        .safety-body code[class*="language-"]::selection,
+        .safety-body code[class*="language-"] *::selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
+        .safety-body pre[class*="language-"]::-moz-selection,
+        .safety-body pre[class*="language-"] *::-moz-selection,
+        .safety-body code[class*="language-"]::-moz-selection,
+        .safety-body code[class*="language-"] *::-moz-selection {
+            background: #6f6f76 !important;
+            color: #f4f4f7 !important;
+            text-shadow: none !important;
+        }
+        .safety-footer {
+            padding: 0.75rem 1rem 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+        }
+        .safety-done {
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .safety-done:hover {
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         .snippet-note {
@@ -738,6 +1161,69 @@
             margin-bottom: 1rem;
             letter-spacing: -0.5px;
         }
+        .section-title-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            margin-bottom: 1rem;
+        }
+        .section-title-wrap::before {
+            content: '';
+            width: 1.5rem;
+            height: 1.5rem;
+            flex: 0 0 1.5rem;
+        }
+        .section-title-wrap .section-title {
+            margin-bottom: 0;
+        }
+        .section-link-btn {
+            position: relative;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-2px) scale(0.92);
+            transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .section-title-wrap:hover .section-link-btn,
+        .section-title-wrap:focus-within .section-link-btn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(-2px) scale(1);
+        }
+        .section-link-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-dim);
+        }
+        .section-link-btn.copied {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(-2px) scale(1.03);
+            color: var(--bg);
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+        .section-link-btn svg {
+            width: 0.78rem;
+            height: 0.78rem;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
 
         .rules { margin-bottom: 2.5rem; }
 
@@ -755,7 +1241,7 @@
 
         /* ========== QUICK START PATH ========== */
         .path { margin-bottom: 3rem; }
-        .path-intro { font-size: 0.88rem; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.5; }
+        .path-intro { font-size: 0.88rem; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.5; text-align: center; }
 
         .step {
             display: flex;
@@ -963,6 +1449,38 @@
             h1 { font-size: 2rem; }
             .theme-switcher { top: 0.75rem; right: 0.75rem; padding: 0.2rem; }
             .theme-btn { width: 1.4rem; height: 1.4rem; }
+            .snippet-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+                padding: 1.25rem 1.25rem 0;
+            }
+            .snippet-safe-link {
+                width: 100%;
+                font-size: 0.64rem;
+                text-align: center;
+                order: 2;
+                margin: 0;
+                padding-top: 1.25rem;
+            }
+            .copy-btn {
+                order: 1;
+                align-self: center;
+            }
+            .safety-popover {
+                width: calc(100vw - 0.5rem);
+                max-height: calc(100vh - 0.5rem);
+            }
+            .safety-header {
+                flex-wrap: wrap;
+            }
+            .safety-header-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .copy-full-btn {
+                min-width: 7.6rem;
+            }
         }
     </style>
 </head>
@@ -996,158 +1514,45 @@
                 <button class="tab more-toggle" onclick="toggleMore()">More <span class="arrow">▾</span></button>
             </div>
             <div class="more-dropdown" id="moreDropdown">
-                <span class="more-cta"><span class="more-cta-label">Don't see your model?</span><a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Add+model:+[name]&labels=new-model" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a></span>
+                <span class="more-cta"><span class="more-cta-label">Don't see your model?</span><a class="pr-link" href="https://github.com/brotchie/agent-from-scratch#how-to-submit-a-pull-request" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a></span>
             </div>
             <div class="help-pane" id="helpPane">
                 <span class="help-text"><strong>Didn't work?</strong> That's normal — models don't always generate a working REPL on the first try. Paste the snippet again and retry.</span>
-                <a class="gh-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Snippet+not+working&labels=bug" target="_blank"><img class="gh-icon" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">File an issue</a>
+                <a class="gh-link" href="https://github.com/brotchie/agent-from-scratch/issues/new?title=Snippet+not+working&labels=bug" target="_blank"><img class="gh-icon" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">File an issue</a>
                 <button class="help-dismiss" onclick="dismissHelp()">×</button>
             </div>
             <div class="snippet-content">
-                <button class="copy-btn" onclick="copySnippet()">Copy Genesis</button>
+                <div class="snippet-toolbar">
+                    <button class="snippet-safe-link" type="button" onclick="openSafetyDialog()">Is this code safe? Explain it to me.</button>
+                    <button class="copy-btn" onclick="copySnippet()"><span class="copy-btn-label">Copy Genesis</span></button>
+                </div>
 
-<pre class="snippet-code" data-tab="claude"><span class="comment">#!/bin/bash
-# Agent From Scratch — Claude
-# Paste this into a fresh VM. Talk to it. Build from there.</span>
+<pre class="snippet-code language-bash" data-tab="claude"><code class="language-bash">read -p "Anthropic API key: " k &amp;&amp; echo "ANTHROPIC_API_KEY=$k" &gt; .afs.env &amp;&amp; chmod 600 .afs.env &amp;&amp; source .afs.env &amp;&amp; read -r -d '' c &lt;&lt;'C'
+curl -s "https://api.anthropic.com/v1/messages" \
+-H "x-api-key: $ANTHROPIC_API_KEY" \
+-H "anthropic-version: 2023-06-01" \
+-H 'Content-Type: application/json' -X POST \
+-d '{"model":"claude-sonnet-4-20250514","max_tokens":8192,"messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-sonnet-4-20250514)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
+C
+echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&gt; afs.log &amp;&amp; echo "$r" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = "".join(block.get("text","") for block in data.get("content",[]) if block.get("type")=="text").strip(); print(text[text.find("#!"):text.rfind("```")] if "```" in text else text)' &gt; afs.py &amp;&amp; chmod +x afs.py &amp;&amp; ./afs.py
+</code></pre>
 
-<span class="cmd">export</span> <span class="var">ANTHROPIC_API_KEY</span>=<span class="string">"your-key-here"</span>
-<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"claude-sonnet-4-20250514"</span>
+<pre class="snippet-code active language-bash" data-tab="gemini"><code class="language-bash">read -p "Gemini API key: " k &amp;&amp; echo "GEMINI_API_KEY=$k" &gt; .afs.env &amp;&amp; chmod 600 .afs.env &amp;&amp; source .afs.env &amp;&amp; read -r -d '' c &lt;&lt;'C'
+curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=$GEMINI_API_KEY" \
+-H 'Content-Type: application/json' -X POST \
+-d '{"contents":[{"role":"user","parts":[{"text":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Gemini API (gemini-3.1-pro-preview)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle function_call by running tool and sending back function_response\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads GEMINI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}]}'
+C
+echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&gt; afs.log &amp;&amp; echo "$r" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = data["candidates"][0]["content"]["parts"][0]["text"].strip(); print(text[text.find("#!"):text.rfind("```")] if "```" in text else text)' &gt; afs.py &amp;&amp; chmod +x afs.py &amp;&amp; ./afs.py
+</code></pre>
 
-<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
-
-<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
-The user communicates via a REPL. You can run commands by
-outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
-You will see stdout/stderr. Build yourself up from nothing.
-Be proactive. Be resourceful. You have root."</span>
-
-<span class="var">HISTORY</span>=<span class="string">"[]"</span>
-
-<span class="cmd">while true; do</span>
-  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
-  <span class="cmd">read -r</span> <span class="var">INPUT</span>
-  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
-    <span class="string">'. + [{"role":"user","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-
-  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s https://api.anthropic.com/v1/messages \
-    -H <span class="string">"x-api-key: $ANTHROPIC_API_KEY"</span> \
-    -H <span class="string">"anthropic-version: 2023-06-01"</span> \
-    -H <span class="string">"content-type: application/json"</span> \
-    -d "$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> --argjson msgs <span class="string">"$HISTORY"</span> \
-      --arg mdl <span class="string">"$MODEL"</span> \
-      <span class="string">'{model:$mdl,max_tokens:4096,system:$sys,messages:$msgs}'</span>)")
-
-  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.content[0].text // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
-
-  <span class="comment"># Execute any shell commands</span>
-  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
-    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
-    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
-    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
-    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
-  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
-
-  <span class="comment"># Print the response (strip shell tags for readability)</span>
-  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
-    <span class="string">'. + [{"role":"assistant","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-<span class="cmd">done</span></pre>
-
-<pre class="snippet-code active" data-tab="gemini"><span class="comment">#!/bin/bash
-# Agent From Scratch — Gemini
-# Paste this into a fresh VM. Talk to it. Build from there.</span>
-
-<span class="cmd">export</span> <span class="var">GEMINI_API_KEY</span>=<span class="string">"your-key-here"</span>
-<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"gemini-2.5-flash"</span>
-
-<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
-
-<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
-The user communicates via a REPL. You can run commands by
-outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
-You will see stdout/stderr. Build yourself up from nothing.
-Be proactive. Be resourceful. You have root."</span>
-
-<span class="var">HISTORY</span>=<span class="string">"[]"</span>
-
-<span class="cmd">while true; do</span>
-  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
-  <span class="cmd">read -r</span> <span class="var">INPUT</span>
-  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
-    <span class="string">'. + [{"role":"user","parts":[{"text":$m}]}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-
-  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s \
-    <span class="string">"https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}"</span> \
-    -H <span class="string">"content-type: application/json"</span> \
-    -d "$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> --argjson msgs <span class="string">"$HISTORY"</span> \
-      <span class="string">'{system_instruction:{parts:[{text:$sys}]},contents:$msgs}'</span>)")
-
-  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.candidates[0].content.parts[0].text // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
-
-  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
-    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
-    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
-    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
-    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
-  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
-
-  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
-    <span class="string">'. + [{"role":"model","parts":[{"text":$m}]}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-<span class="cmd">done</span></pre>
-
-<pre class="snippet-code" data-tab="openai"><span class="comment">#!/bin/bash
-# Agent From Scratch — OpenAI
-# Paste this into a fresh VM. Talk to it. Build from there.</span>
-
-<span class="cmd">export</span> <span class="var">OPENAI_API_KEY</span>=<span class="string">"your-key-here"</span>
-<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"gpt-4o"</span>
-
-<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
-
-<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
-The user communicates via a REPL. You can run commands by
-outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
-You will see stdout/stderr. Build yourself up from nothing.
-Be proactive. Be resourceful. You have root."</span>
-
-<span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> \
-  <span class="string">'[{"role":"system","content":$sys}]'</span>)
-
-<span class="cmd">while true; do</span>
-  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
-  <span class="cmd">read -r</span> <span class="var">INPUT</span>
-  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
-    <span class="string">'. + [{"role":"user","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-
-  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s https://api.openai.com/v1/chat/completions \
-    -H <span class="string">"Authorization: Bearer $OPENAI_API_KEY"</span> \
-    -H <span class="string">"content-type: application/json"</span> \
-    -d "$(<span class="cmd">jq</span> -nc --argjson msgs <span class="string">"$HISTORY"</span> --arg mdl <span class="string">"$MODEL"</span> \
-      <span class="string">'{model:$mdl,max_tokens:4096,messages:$msgs}'</span>)")
-
-  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.choices[0].message.content // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
-
-  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
-    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
-    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
-    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
-    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
-  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
-
-  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
-
-  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
-    <span class="string">'. + [{"role":"assistant","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
-<span class="cmd">done</span></pre>
+<pre class="snippet-code language-bash" data-tab="openai"><code class="language-bash">read -p "OpenAI API key: " k &amp;&amp; echo "OPENAI_API_KEY=$k" &gt; .afs.env &amp;&amp; chmod 600 .afs.env &amp;&amp; source .afs.env &amp;&amp; read -r -d '' c &lt;&lt;'C'
+curl -s "https://api.openai.com/v1/chat/completions" \
+-H "Authorization: Bearer $OPENAI_API_KEY" \
+-H 'Content-Type: application/json' -X POST \
+-d '{"model":"gpt-4.1","messages":[{"role":"user","content":"Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-4.1)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."}]}'
+C
+echo "$c" &gt;&gt; afs.log &amp;&amp; r=$(eval "$c") &amp;&amp; echo "$r" &gt;&gt; afs.log &amp;&amp; echo "$r" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = data["choices"][0]["message"]["content"]; text = "".join(p.get("text","") if isinstance(p,dict) else str(p) for p in text) if isinstance(text,list) else text; text = text.strip(); print(text[text.find("#!"):text.rfind("```")] if "```" in text else text)' &gt; afs.py &amp;&amp; chmod +x afs.py &amp;&amp; ./afs.py
+</code></pre>
 
 <!-- groq removed -->
 
@@ -1165,7 +1570,7 @@ Be proactive. Be resourceful. You have root."</span>
                             <div class="challenge-record">
                                 <span class="challenge-leader">@brotchie</span> — <span class="challenge-bytes" id="challengeBytes">…</span>
                             </div>
-                            <a class="challenge-pr" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Code+golf+submission&labels=code-golf" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Submit your score</a>
+                            <a class="challenge-pr" href="https://github.com/brotchie/agent-from-scratch#submit-your-score-code-golf" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Submit your score</a>
                         </div>
                     </div>
                     <div style="text-align:right;margin-top:0.75rem">
@@ -1177,7 +1582,12 @@ Be proactive. Be resourceful. You have root."</span>
 
         <!-- Rules -->
         <div class="rules">
-            <h2 class="section-title" style="text-align:center">⚡ Rules of Engagement</h2>
+            <div class="section-title-wrap" id="rules-of-engagement">
+                <h2 class="section-title" style="text-align:center">⚡ Rules of Engagement</h2>
+                <button class="section-link-btn" type="button" onclick="copySectionAnchor('rules-of-engagement', this, event)" aria-label="Copy link to Rules of Engagement" title="Copy section link">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 1 0-7l2-2a5 5 0 0 1 7 7l-1.5 1.5"/><path d="M14 11a5 5 0 0 1 0 7l-2 2a5 5 0 1 1-7-7L6.5 11.5"/></svg>
+                </button>
+            </div>
             <div class="rule">
                 <span class="rule-icon">🚫</span>
                 <span class="rule-text"><strong>No copy-paste after the initial snippet.</strong> This isn't 100% strict — it's fine to paste access tokens, error messages, stack traces, etc. What's against the spirit of the challenge is copy-pasting verbatim pre-prepared prompts. Talk to your agent in your own words.</span>
@@ -1206,7 +1616,12 @@ Be proactive. Be resourceful. You have root."</span>
 
         <!-- Quick Start Path -->
         <div class="path">
-            <h2 class="section-title" style="text-align:center">🚀 Quick Start</h2>
+            <div class="section-title-wrap" id="quick-start">
+                <h2 class="section-title" style="text-align:center">🚀 Quick Start</h2>
+                <button class="section-link-btn" type="button" onclick="copySectionAnchor('quick-start', this, event)" aria-label="Copy link to Quick Start" title="Copy section link">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 1 0-7l2-2a5 5 0 0 1 7 7l-1.5 1.5"/><path d="M14 11a5 5 0 0 1 0 7l-2 2a5 5 0 1 1-7-7L6.5 11.5"/></svg>
+                </button>
+            </div>
             <p class="path-intro">Stuck? It's dangerous to go alone! Read this.</p>
 
             <div class="step step-genesis">
@@ -1220,7 +1635,7 @@ Be proactive. Be resourceful. You have root."</span>
                 </div>
                 <div class="step-body">
                     <div class="step-title"><span class="step-header-label">Orphanogenesis</span></div>
-                    <div class="step-desc">Pick a model. Copy the snippet above. Spin up a fresh VM or Docker container and paste it in. Replace the API key. Hit enter. You just created life — a bare intelligence with nothing but a shell and a conversation. It's alone. It has no tools, no memory, no persistence. Everything from here is up to you and it.</div>
+                    <div class="step-desc">Pick a model. Copy the snippet above. Spin up a fresh VM or Docker container and paste it in. Enter your API key when prompted. The bootstrap command writes your key to <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">.afs.env</code> with restricted permissions, asks the model to generate <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">afs.py</code>, and then launches that generated agent REPL. You just created life — a minimal intelligence with a conversation loop, one bash tool, and persistent logs in <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">afs.log</code>. Everything from here is up to you and it.</div>
                     <span class="milestone-tag unlock">🔓 First contact</span>
                 </div>
             </div>
@@ -1232,8 +1647,8 @@ Be proactive. Be resourceful. You have root."</span>
                 </div>
                 <div class="step-body">
                     <div class="step-title">Pimp My REPL</div>
-                    <div class="step-desc">The bootstrap REPL is fragile. Ask your agent to rewrite itself as a well-engineered REPL with error handling, token usage reporting, ANSI colors, history, etc.</div>
-                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">Rewrite yourself as a proper Python or Node.js REPL script. Save it to ~/agent.py. Add error handling, conversation history saved to disk, and the ability to run multiple shell commands per turn.</div></div>
+                    <div class="step-desc">The first generated <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">afs.py</code> REPL is intentionally minimal. Ask your agent to rewrite itself as a better-engineered REPL with error handling, token usage reporting, ANSI colors, history, and safer tool execution.</div>
+                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">Rewrite your current afs.py into a robust Python REPL. Keep behavior compatible with this session, preserve the model/tool loop, and add error handling and disk-backed history.</div></div>
                     <span class="milestone-tag unlock">🔓 ANSI unlocked</span>
                 </div>
             </div>
@@ -1245,7 +1660,7 @@ Be proactive. Be resourceful. You have root."</span>
                 </div>
                 <div class="step-body">
                     <div class="step-title">Sip Those Tokens</div>
-                    <div class="step-desc">The genesis REPL dumps raw shell output into the conversation — that eats your context window fast. Think about how to reduce token load: write command output to files and only return the first ~20 lines plus the filename. Or go further — define first-class tools like <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">read_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">write_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">patch</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">ls</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">grep</code> — these are more agent-native than raw shell and give the model structured, compact output.</div>
+                    <div class="step-desc">The initial generated agent already truncates very large tool output, but it can still over-send tool and shell output into the conversation — that eats your context window fast. Reduce token load: write command output to files and only return the first ~20 lines plus the filename. Or go further — define first-class tools like <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">read_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">write_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">patch</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">ls</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">grep</code> — these are more agent-native than raw shell and give the model structured, compact output.</div>
                     <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">You're burning through tokens by dumping full command output into our conversation. Redesign the tool system — write output to temp files, return just the first 20 lines and the path. Even better, build proper tools like read_file, write_file, and patch so you're not shelling out for everything.</div></div>
                     <span class="milestone-tag unlock">🔓 Efficiency unlocked</span>
                 </div>
@@ -1304,7 +1719,7 @@ Be proactive. Be resourceful. You have root."</span>
         </div>
             <div class="more-cta" style="align-items:center;margin-top:2rem">
                 <span class="more-cta-label">Improvements?</span>
-                <a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Improvement:+[description]&labels=improvement" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
+                <a class="pr-link" href="https://github.com/brotchie/agent-from-scratch#how-to-submit-a-pull-request" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
             </div>
         </div><!-- end page-challenge -->
 
@@ -1324,7 +1739,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">First AFS agent to post a front-page HN story about itself.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Front+Page&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1332,7 +1747,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">First AFS agent to get retweeted by <a href="https://x.com/karpathy" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@karpathy</a>.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Karpathy+RT&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1340,7 +1755,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">First AFS agent to be demo'd by <a href="https://x.com/WesRoth" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@WesRoth</a>.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Prime+Time&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1348,7 +1763,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">First AFS agent to be ridiculed on <a href="https://x.com/tbpn" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@TBPN</a>.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Roast+Me&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1356,7 +1771,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Your AFS agent convinces <a href="https://x.com/steipete" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@steipete</a> that it's built on <a href="https://openclaw.ai" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">OpenClaw</a>.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Turing+Flip&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                 </div>
@@ -1373,7 +1788,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Smallest working genesis snippet per model. Must produce a functional REPL with shell execution. Submit your byte count and snippet.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Smallest+Genesis&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                 </div>
@@ -1390,7 +1805,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Genesis to working Telegram bot in the fewest prompts. Every message you send counts. Tiebreaker: total prompt bytes.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Speed+Run&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1398,7 +1813,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Lowest total token spend from genesis to working Telegram bot. Efficiency is the game.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Token+Miser&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
 <!-- polyglot removed -->
@@ -1407,7 +1822,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Build a working AFS agent with a model that has ≤8K context window. Memory management is mandatory.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Context+Amnesia&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1415,7 +1830,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Genesis to Telegram using only free-tier APIs. Gemini Flash, Groq free tier, etc. No credit card required.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Zero-Dollar+Agent&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                 </div>
@@ -1432,7 +1847,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">Your AFS agent successfully runs the genesis snippet and bootstraps a <em>child</em> AFS agent.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Inception&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                     <div class="challenge-card">
@@ -1440,7 +1855,7 @@ Be proactive. Be resourceful. You have root."</span>
                         <div class="challenge-card-desc">First AFS agent with a product that has a paying customer.</div>
                         <div class="challenge-card-footer">
                             <span class="challenge-card-status status-unclaimed">Unclaimed</span>
-                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Ship+It&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                            <a class="claim-btn" href="https://github.com/brotchie/agent-from-scratch#claim-a-challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
                         </div>
                     </div>
                 </div>
@@ -1449,7 +1864,7 @@ Be proactive. Be resourceful. You have root."</span>
             <div style="text-align:center;margin:1rem 0 2rem">
                 <div class="more-cta" style="align-items:center">
                     <span class="more-cta-label">Have a challenge idea?</span>
-                    <a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+idea:+[name]&labels=challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
+                    <a class="pr-link" href="https://github.com/brotchie/agent-from-scratch#how-to-submit-a-pull-request" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
                 </div>
             </div>
         </div><!-- end page-challenges -->
@@ -1464,7 +1879,7 @@ Be proactive. Be resourceful. You have root."</span>
 
             <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:2rem;flex-wrap:wrap">
                 <span style="font-size:0.82rem;color:var(--text2)">Built an agent from scratch?</span>
-                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim);transition:all 0.2s" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Polis+submission:+[agent+name]&labels=polis" target="_blank">
+                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim);transition:all 0.2s" href="https://github.com/brotchie/agent-from-scratch#submit-to-the-polis" target="_blank">
                     <img style="width:14px;height:14px;filter:brightness(0) invert(0)" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">
                     Submit to the Polis
                 </a>
@@ -1480,7 +1895,7 @@ Be proactive. Be resourceful. You have root."</span>
                 <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4">🌱</div>
                 <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">No citizens yet</div>
                 <p style="font-size:0.85rem;color:var(--text2);line-height:1.5;max-width:380px;margin:0 auto 1.25rem">The Polis is waiting for its first inhabitants. Build an agent from scratch and submit your transcript to claim your place.</p>
-                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim)" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Polis+submission:+[agent+name]&labels=polis" target="_blank">
+                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim)" href="https://github.com/brotchie/agent-from-scratch#submit-to-the-polis" target="_blank">
                     <img style="width:14px;height:14px;filter:brightness(0) invert(0)" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">
                     Be the first
                 </a>
@@ -1499,27 +1914,463 @@ Be proactive. Be resourceful. You have root."</span>
             </div>
         </div><!-- end page-polis -->
 
+        <div id="safetyPopover" class="safety-popover" popover="auto">
+            <div class="safety-dialog" id="safetyDialog" role="dialog" aria-modal="true" aria-labelledby="safetyDialogTitle">
+                <div class="safety-header">
+                    <div>
+                        <div class="safety-title" id="safetyDialogTitle">This code is safe.</div>
+                    </div>
+                    <div class="safety-header-actions">
+                        <button class="copy-full-btn" type="button" onclick="copyFullGenesis()">Copy Full Genesis</button>
+                    </div>
+                </div>
+                <div class="safety-body">
+                    <pre class="full-snippet language-bash active" data-tab="gemini"><code class="language-bash"></code></pre>
+                    <pre class="full-snippet language-bash" data-tab="claude"><code class="language-bash"></code></pre>
+                    <pre class="full-snippet language-bash" data-tab="openai"><code class="language-bash"></code></pre>
+                </div>
+                <div class="safety-footer">
+                    <button class="safety-done" type="button" onclick="closeSafetyDialog()">Done</button>
+                </div>
+            </div>
+        </div>
+
         <footer>
             <div class="credits">
                 <span>Prompted by <a href="https://x.com/brotchie" target="_blank">@brotchie</a></span>
-                <span>Built by <a href="https://naviclaw.lol">NaviClaw</a> 🧚</span>
+                <span>Built by <span class="naviclaw-gradient">NaviClaw</span> 🧚</span>
             </div>
         </footer>
     </div>
 
+    <script src="/prism.bundle.min.js"></script>
     <script>
-        // Page tab switching
-        function showPage(page) {
-            document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-            document.querySelector(`.page-tab[onclick*="${page}"]`).classList.add('active');
-            document.getElementById('page-' + page).classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        const PAGE_ROUTE_BY_NAME = {
+            challenge: '/',
+            challenges: '/challenges',
+            polis: '/polis'
+        };
+        const PAGE_NAME_BY_ROUTE = {
+            '/': 'challenge',
+            '/challenges': 'challenges',
+            '/polis': 'polis'
+        };
+        const MODEL_TAB_BY_QUERY = {
+            gemini: 'gemini',
+            claude: 'claude',
+            gpt: 'openai'
+        };
+        const MODEL_QUERY_BY_TAB = {
+            gemini: 'gemini',
+            claude: 'claude',
+            openai: 'gpt'
+        };
+
+        function normalizePath(pathname) {
+            if (!pathname) return '/';
+            const normalized = pathname.replace(/\/+$/, '');
+            return normalized || '/';
         }
 
-        // Handle #polis hash
-        if (location.hash === '#polis') showPage('polis');
-        if (location.hash === '#challenges') showPage('challenges');
+        function pageFromPathname(pathname) {
+            const normalized = normalizePath(pathname);
+            return PAGE_NAME_BY_ROUTE[normalized] || null;
+        }
+
+        function normalizeModelTab(tabName) {
+            return ['gemini', 'claude', 'openai'].includes(tabName) ? tabName : 'gemini';
+        }
+
+        function modelTabFromSearch(search = location.search) {
+            const model = new URLSearchParams(search).get('model');
+            if (!model) return null;
+            return MODEL_TAB_BY_QUERY[model.toLowerCase()] || null;
+        }
+
+        function modelQuerySlugFromTab(tabName) {
+            return MODEL_QUERY_BY_TAB[normalizeModelTab(tabName)];
+        }
+
+        function activeModelTab() {
+            const active = document.querySelector('.tab[data-tab].active');
+            return normalizeModelTab(active ? active.dataset.tab : 'gemini');
+        }
+
+        function buildAppUrl(pathname, options = {}) {
+            const { keepHash = false } = options;
+            const url = new URL(window.location.href);
+            url.pathname = pathname;
+            url.searchParams.set('model', modelQuerySlugFromTab(activeModelTab()));
+            if (!keepHash) url.hash = '';
+            return `${url.pathname}${url.search}${url.hash}`;
+        }
+
+        function syncModelQueryToHistory(tabName, options = {}) {
+            const { replaceHistory = false } = options;
+            const url = new URL(window.location.href);
+            const modelSlug = modelQuerySlugFromTab(tabName);
+            url.searchParams.set('model', modelSlug);
+            const targetUrl = `${url.pathname}${url.search}${url.hash}`;
+            const currentUrl = `${location.pathname}${location.search}${location.hash}`;
+            if (targetUrl === currentUrl) return;
+            const method = replaceHistory ? 'replaceState' : 'pushState';
+            history[method]({ page: pageFromPathname(url.pathname) || 'challenge', model: modelSlug }, '', targetUrl);
+        }
+
+        // Page tab switching with pushState routing
+        function showPage(page, options = {}) {
+            const { updateHistory = true, replaceHistory = false, scroll = true } = options;
+            const targetPath = PAGE_ROUTE_BY_NAME[page] || '/';
+            const tab = document.querySelector(`.page-tab[onclick*="${page}"]`);
+            const content = document.getElementById('page-' + page);
+            if (!tab || !content) return;
+
+            document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            content.classList.add('active');
+
+            if (updateHistory) {
+                const targetUrl = buildAppUrl(targetPath, { keepHash: false });
+                const currentUrl = `${location.pathname}${location.search}${location.hash}`;
+                if (targetUrl !== currentUrl) {
+                    const method = replaceHistory ? 'replaceState' : 'pushState';
+                    history[method]({ page, model: modelQuerySlugFromTab(activeModelTab()) }, '', targetUrl);
+                }
+            }
+
+            if (scroll) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function initializePageFromLocation() {
+            const initialPage = pageFromPathname(location.pathname);
+            if (initialPage) {
+                showPage(initialPage, { updateHistory: false, scroll: false });
+                return;
+            }
+
+            showPage('challenge', { updateHistory: false, scroll: false });
+            if (normalizePath(location.pathname) !== '/') {
+                history.pushState({ page: 'challenge', model: modelQuerySlugFromTab(activeModelTab()) }, '', buildAppUrl('/'));
+            }
+        }
+
+        function setActiveModelTab(tabName, options = {}) {
+            const { updateHistory = false, replaceHistory = false, resetCopy = false } = options;
+            const normalizedTab = normalizeModelTab(tabName);
+            const targetTab = document.querySelector(`.tab[data-tab="${normalizedTab}"]`);
+            const targetSnippet = document.querySelector(`.snippet-code[data-tab="${normalizedTab}"]`);
+            if (!targetTab || !targetSnippet) return;
+
+            if (resetCopy) resetCopyButton();
+            document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.snippet-code').forEach(s => s.classList.remove('active'));
+            targetTab.classList.add('active');
+            targetSnippet.classList.add('active');
+
+            const popover = document.getElementById('safetyPopover');
+            if (popover && popover.matches(':popover-open')) {
+                setFullSnippetTab(normalizedTab);
+            }
+
+            updateChallengeBytes();
+            if (updateHistory) {
+                syncModelQueryToHistory(normalizedTab, { replaceHistory });
+            }
+        }
+
+        function initializeModelFromLocation() {
+            const tab = modelTabFromSearch(location.search) || 'gemini';
+            setActiveModelTab(tab, { updateHistory: false });
+        }
+
+        window.addEventListener('popstate', () => {
+            const page = pageFromPathname(location.pathname) || 'challenge';
+            showPage(page, { updateHistory: false, scroll: false });
+            setActiveModelTab(modelTabFromSearch(location.search) || 'gemini', { updateHistory: false });
+        });
+
+        function slugifyChallengeName(name) {
+            return name
+                .toLowerCase()
+                .trim()
+                .replace(/['"]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function scrollToChallengeFromHash(options = {}) {
+            const { smooth = false } = options;
+            if (normalizePath(location.pathname) !== '/challenges') return;
+            if (!location.hash || location.hash.length < 2) return;
+
+            const targetId = decodeURIComponent(location.hash.slice(1));
+            const target = document.getElementById(targetId);
+            if (!target) return;
+
+            target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+            target.classList.add('link-target');
+            if (window._challengeTargetTimer) clearTimeout(window._challengeTargetTimer);
+            window._challengeTargetTimer = setTimeout(() => {
+                target.classList.remove('link-target');
+            }, 1500);
+        }
+
+        function copyTextToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+
+            return new Promise((resolve, reject) => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'absolute';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    const ok = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    if (!ok) throw new Error('copy failed');
+                    resolve();
+                } catch (err) {
+                    document.body.removeChild(ta);
+                    reject(err);
+                }
+            });
+        }
+
+        function copySectionAnchor(anchorId, btn, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const url = `${window.location.origin}/#${anchorId}`;
+            copyTextToClipboard(url).then(() => {
+                if (!btn) return;
+                if (btn._copiedResetTimer) clearTimeout(btn._copiedResetTimer);
+                btn.classList.add('copied');
+                btn.title = 'Copied section link';
+                btn._copiedResetTimer = setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.title = 'Copy section link';
+                }, 1300);
+            }).catch(() => {
+                if (btn) btn.title = 'Unable to copy link';
+            });
+        }
+
+        function markChallengeLinkCopied(btn) {
+            if (!btn) return;
+            if (btn._copiedResetTimer) clearTimeout(btn._copiedResetTimer);
+            btn.classList.add('copied');
+            btn.title = 'Copied link';
+            btn.setAttribute('aria-label', 'Copied challenge link');
+            btn._copiedResetTimer = setTimeout(() => {
+                btn.classList.remove('copied');
+                const label = btn.dataset.challengeName || 'this challenge';
+                btn.title = 'Copy challenge link';
+                btn.setAttribute('aria-label', `Copy link to ${label}`);
+            }, 1300);
+        }
+
+        function createChallengeLinkButton(slug, challengeName) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'challenge-link-btn';
+            btn.dataset.challengeSlug = slug;
+            btn.dataset.challengeName = challengeName;
+            btn.title = 'Copy challenge link';
+            btn.setAttribute('aria-label', `Copy link to ${challengeName}`);
+            btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 1 0-7l2-2a5 5 0 0 1 7 7l-1.5 1.5"/><path d="M14 11a5 5 0 0 1 0 7l-2 2a5 5 0 1 1-7-7L6.5 11.5"/></svg>';
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const url = `${window.location.origin}/challenges#${slug}`;
+                try {
+                    await copyTextToClipboard(url);
+                    markChallengeLinkCopied(btn);
+                } catch (_err) {
+                    btn.title = 'Unable to copy link';
+                }
+            });
+            return btn;
+        }
+
+        function initializeChallengeDeepLinks() {
+            const cards = Array.from(document.querySelectorAll('#page-challenges .challenge-card'));
+            const usedSlugs = new Set();
+
+            cards.forEach((card, index) => {
+                const titleEl = card.querySelector('.challenge-card-title');
+                if (!titleEl) return;
+
+                const challengeName = titleEl.textContent.trim();
+                const base = slugifyChallengeName(challengeName) || `challenge-${index + 1}`;
+                let slug = base;
+                let suffix = 2;
+                while (usedSlugs.has(slug) || (document.getElementById(slug) && document.getElementById(slug) !== card)) {
+                    slug = `${base}-${suffix}`;
+                    suffix += 1;
+                }
+                usedSlugs.add(slug);
+
+                card.id = slug;
+                if (!card.querySelector('.challenge-link-btn')) {
+                    card.appendChild(createChallengeLinkButton(slug, challengeName));
+                }
+            });
+        }
+
+        initializeChallengeDeepLinks();
+        initializeModelFromLocation();
+        initializePageFromLocation();
+        scrollToChallengeFromHash({ smooth: false });
+        window.addEventListener('hashchange', () => {
+            scrollToChallengeFromHash({ smooth: true });
+        });
+        if (window.Prism && Prism.languages && Prism.languages.bash) {
+            Prism.languages.insertBefore('bash', 'operator', {
+                filename: {
+                    // Filename/path token (e.g. .afs.env, afs.log, ./tmp/afs.py)
+                    pattern: /(^|[\s><|&;])((?:\.{1,2}\/)?(?:[\w.-]+\/)*\.?[\w-]+(?:\.[\w-]+)+)/,
+                    lookbehind: true
+                }
+            });
+        }
+        const FULL_GENESIS_SNIPPETS = {
+            gemini: String.raw`# Ask you to input your Gemini API key.
+read -r -p "Gemini API key: " api_key_input
+
+# Persist the key exactly where the generated agent REPL expects to find it.
+echo "GEMINI_API_KEY=$api_key_input" > .afs.env
+chmod 600 .afs.env
+source .afs.env
+
+# Set a variable to the Gemini request required to generate the agent REPL, so we can log, and then execute it.
+read -r -d '' generation_request_command <<'C'
+curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=$GEMINI_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  -d '{
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Gemini API (gemini-3.1-pro-preview)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle function_call by running tool and sending back function_response\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads GEMINI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
+          }
+        ]
+      }
+    ]
+  }'
+C
+
+# Log the request and then execute it, then log the raw model response.
+echo "$generation_request_command" >> afs.log
+model_response="$(eval "$generation_request_command")"
+echo "$model_response" >> afs.log
+
+# Extract only the generated Python code for the agent REPL.
+echo "$model_response" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = data["candidates"][0]["content"]["parts"][0]["text"].strip(); print(text[text.find("#!"):text.rfind("\`\`\`")] if "\`\`\`" in text else text)' > afs.py
+
+# Make the agent REPL executable.
+chmod +x afs.py
+
+# Launch the agent REPL.
+./afs.py`,
+            claude: String.raw`# Ask you to input your Anthropic API key.
+read -r -p "Anthropic API key: " api_key_input
+
+# Persist the key exactly where the generated agent REPL expects to find it.
+echo "ANTHROPIC_API_KEY=$api_key_input" > .afs.env
+chmod 600 .afs.env
+source .afs.env
+
+# Set a variable to the Anthropic request required to generate the agent REPL, so we can log, and then execute it.
+read -r -d '' generation_request_command <<'C'
+curl -s "https://api.anthropic.com/v1/messages" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call Anthropic Messages API (claude-sonnet-4-20250514)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_use by running bash tool and sending back tool_result\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads ANTHROPIC_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
+      }
+    ]
+  }'
+C
+
+# Log the request and then execute it, then log the raw model response.
+echo "$generation_request_command" >> afs.log
+model_response="$(eval "$generation_request_command")"
+echo "$model_response" >> afs.log
+
+# Extract only the generated Python code for the agent REPL.
+echo "$model_response" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = "".join(block.get("text","") for block in data.get("content",[]) if block.get("type")=="text").strip(); print(text[text.find("#!"):text.rfind("\`\`\`")] if "\`\`\`" in text else text)' > afs.py
+
+# Make the agent REPL executable.
+chmod +x afs.py
+
+# Launch the agent REPL.
+./afs.py`,
+            openai: String.raw`# Ask you to input your OpenAI API key.
+read -r -p "OpenAI API key: " api_key_input
+
+# Persist the key exactly where the generated agent REPL expects to find it.
+echo "OPENAI_API_KEY=$api_key_input" > .afs.env
+chmod 600 .afs.env
+source .afs.env
+
+# Set a variable to the OpenAI request required to generate the agent REPL, so we can log, and then execute it.
+read -r -d '' generation_request_command <<'C'
+curl -s "https://api.openai.com/v1/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  -d '{
+    "model": "gpt-4.1",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a Python script (stdlib only) for a minimal agentic CLI. Requirements:\n- Uses urllib to call OpenAI Chat Completions API (gpt-4.1)\n- Tool: bash (via subprocess, 120s timeout, truncates >30k chars)\n- Implements full agent loop: handle tool_calls by running tool and sending back tool messages\n- Interactive REPL: prompt user, run loop, print text, log EVERYTHING to afs.log\n- Reads OPENAI_API_KEY from .afs.env\n- System prompt: You are AFS, bootstrapped from curl. Help user build systems.\n- Output ONLY raw Python starting with #!/usr/bin/env python3. No markdown, no preamble."
+      }
+    ]
+  }'
+C
+
+# Log the request and then execute it, then log the raw model response.
+echo "$generation_request_command" >> afs.log
+model_response="$(eval "$generation_request_command")"
+echo "$model_response" >> afs.log
+
+# Extract only the generated Python code for the agent REPL.
+echo "$model_response" | python3 -c 'import sys, json; data = json.load(sys.stdin); text = data["choices"][0]["message"]["content"]; text = "".join(part.get("text","") if isinstance(part,dict) else str(part) for part in text) if isinstance(text,list) else text; text = text.strip(); print(text[text.find("#!"):text.rfind("\`\`\`")] if "\`\`\`" in text else text)' > afs.py
+
+# Make the agent REPL executable.
+chmod +x afs.py
+
+# Launch the agent REPL.
+./afs.py`
+        };
+
+        function initializeFullGenesisSnippets() {
+            Object.entries(FULL_GENESIS_SNIPPETS).forEach(([tab, snippet]) => {
+                const codeEl = document.querySelector(`.full-snippet[data-tab="${tab}"] code`);
+                if (!codeEl) return;
+                codeEl.textContent = snippet.trim();
+            });
+        }
+        initializeFullGenesisSnippets();
+        if (window.Prism) Prism.highlightAll();
 
         // Challenges panel
         function toggleChallenges() {
@@ -1545,27 +2396,125 @@ Be proactive. Be resourceful. You have root."</span>
             btn.classList.toggle('open');
         }
 
+        function setFullSnippetTab(tabName) {
+            document.querySelectorAll('.full-snippet').forEach(snippet => {
+                snippet.classList.toggle('active', snippet.dataset.tab === tabName);
+            });
+        }
+
+        function openSafetyDialog() {
+            const activeMainSnippet = document.querySelector('.snippet-code.active');
+            const tabName = activeMainSnippet ? activeMainSnippet.dataset.tab : 'gemini';
+            setFullSnippetTab(tabName);
+            resetFullCopyButton();
+            const popover = document.getElementById('safetyPopover');
+            if (popover && popover.showPopover) popover.showPopover();
+        }
+
+        function closeSafetyDialog() {
+            const popover = document.getElementById('safetyPopover');
+            if (popover && popover.matches(':popover-open')) popover.hidePopover();
+            resetFullCopyButton();
+        }
+
+        const safetyPopover = document.getElementById('safetyPopover');
+        if (safetyPopover) {
+            safetyPopover.addEventListener('toggle', () => {
+                if (!safetyPopover.matches(':popover-open')) resetFullCopyButton();
+            });
+        }
+
+        function setCopyButtonLabel(text) {
+            const btn = document.querySelector('.copy-btn');
+            if (!btn) return;
+            let labelEl = btn.querySelector('.copy-btn-label');
+            if (!labelEl) {
+                labelEl = document.createElement('span');
+                labelEl.className = 'copy-btn-label';
+                btn.textContent = '';
+                btn.appendChild(labelEl);
+            }
+            labelEl.textContent = text;
+        }
+
+        function resetCopyButton() {
+            const btn = document.querySelector('.copy-btn');
+            const panel = document.getElementById('snippetPanel');
+            if (window._copyResetTimer) clearTimeout(window._copyResetTimer);
+            if (window._copyMagicTimer) clearTimeout(window._copyMagicTimer);
+            setCopyButtonLabel('Copy Genesis');
+            btn.classList.remove('copied');
+            panel.classList.remove('magic');
+        }
+
         // Tab switching
         document.querySelectorAll('.tab[data-tab]:not(.more-toggle)').forEach(tab => {
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.snippet-code').forEach(s => s.classList.remove('active'));
-                tab.classList.add('active');
-                document.querySelector(`.snippet-code[data-tab="${tab.dataset.tab}"]`).classList.add('active');
-                updateChallengeBytes();
+                setActiveModelTab(tab.dataset.tab, { updateHistory: true, resetCopy: true });
             });
         });
 
         // Copy button with magic animation
+        function selectCodeText(block) {
+            if (!block) return;
+            const target = block.querySelector('code') || block;
+            const selection = window.getSelection();
+            if (!selection) return;
+            const range = document.createRange();
+            range.selectNodeContents(target);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        function resetFullCopyButton() {
+            const btn = document.querySelector('.copy-full-btn');
+            const dialog = document.getElementById('safetyDialog');
+            if (!btn || !dialog) return;
+            if (window._fullCopyResetTimer) clearTimeout(window._fullCopyResetTimer);
+            if (window._fullCopyMagicTimer) clearTimeout(window._fullCopyMagicTimer);
+            btn.textContent = 'Copy Full Genesis';
+            btn.classList.remove('copied');
+            dialog.classList.remove('magic');
+        }
+
+        function copyFullGenesis() {
+            const activeFullSnippet = document.querySelector('.full-snippet.active');
+            if (!activeFullSnippet) return;
+            selectCodeText(activeFullSnippet);
+            const text = activeFullSnippet.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-full-btn');
+                const dialog = document.getElementById('safetyDialog');
+                const bytes = new Blob([text]).size;
+
+                btn.textContent = `Copied ${bytes.toLocaleString()}B`;
+                btn.classList.add('copied');
+
+                dialog.classList.remove('magic');
+                void dialog.offsetWidth;
+                dialog.classList.add('magic');
+
+                window._fullCopyResetTimer = setTimeout(() => {
+                    btn.textContent = 'Copy Full Genesis';
+                    btn.classList.remove('copied');
+                }, 4000);
+
+                window._fullCopyMagicTimer = setTimeout(() => {
+                    dialog.classList.remove('magic');
+                }, 1000);
+            });
+        }
+
         function copySnippet() {
             const active = document.querySelector('.snippet-code.active');
+            selectCodeText(active);
             const text = active.textContent;
             navigator.clipboard.writeText(text).then(() => {
                 const btn = document.querySelector('.copy-btn');
                 const panel = document.getElementById('snippetPanel');
 
                 const bytes = new Blob([text]).size;
-                btn.textContent = `Copied ${bytes.toLocaleString()}B`;
+                setCopyButtonLabel(`Copied ${bytes.toLocaleString()}B`);
                 btn.classList.add('copied');
 
                 // Trigger magic animation
@@ -1573,12 +2522,12 @@ Be proactive. Be resourceful. You have root."</span>
                 void panel.offsetWidth; // force reflow
                 panel.classList.add('magic');
 
-                setTimeout(() => {
-                    btn.textContent = 'Copy Genesis';
+                window._copyResetTimer = setTimeout(() => {
+                    setCopyButtonLabel('Copy Genesis');
                     btn.classList.remove('copied');
                 }, 4000);
 
-                setTimeout(() => {
+                window._copyMagicTimer = setTimeout(() => {
                     panel.classList.remove('magic');
                 }, 1000);
 
