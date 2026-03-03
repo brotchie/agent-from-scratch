@@ -4,8 +4,10 @@ Minimal local server for Agent From Scratch.
 
 Serves:
 - /, /polis, /challenges -> index.html
+- /polis/<submission>/... -> that submission's index.html when present
 - /favicon.ico -> favicon
 - /prism.bundle.min.js -> Prism JavaScript bundle
+- /polis.js -> Polis manifest used by the main page
 - Static files from the project directory
 """
 
@@ -22,6 +24,7 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 INDEX_FILE = PROJECT_ROOT / "index.html"
 FAVICON_FILE = PROJECT_ROOT / "favicon.ico"
 PRISM_BUNDLE_FILE = PROJECT_ROOT / "prism.bundle.min.js"
+POLIS_MANIFEST_FILE = PROJECT_ROOT / "polis.js"
 APP_ROUTES = {"/", "/polis", "/challenges"}
 
 
@@ -31,11 +34,18 @@ class LocalHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         route_path = urlsplit(self.path).path
+        polis_index = self._resolve_polis_index(route_path)
+        if polis_index is not None:
+            self._serve_file(polis_index)
+            return
         if route_path == "/favicon.ico":
             self._serve_file(FAVICON_FILE)
             return
         if route_path in {"/prism.bundle.min.js", "/vendor/prism/prism.bundle.min.js"}:
             self._serve_file(PRISM_BUNDLE_FILE)
+            return
+        if route_path == "/polis.js":
+            self._serve_file(POLIS_MANIFEST_FILE)
             return
         if self._should_serve_index(route_path):
             self._serve_index()
@@ -44,11 +54,18 @@ class LocalHandler(SimpleHTTPRequestHandler):
 
     def do_HEAD(self) -> None:
         route_path = urlsplit(self.path).path
+        polis_index = self._resolve_polis_index(route_path)
+        if polis_index is not None:
+            self._serve_file(polis_index, head_only=True)
+            return
         if route_path == "/favicon.ico":
             self._serve_file(FAVICON_FILE, head_only=True)
             return
         if route_path in {"/prism.bundle.min.js", "/vendor/prism/prism.bundle.min.js"}:
             self._serve_file(PRISM_BUNDLE_FILE, head_only=True)
+            return
+        if route_path == "/polis.js":
+            self._serve_file(POLIS_MANIFEST_FILE, head_only=True)
             return
         if self._should_serve_index(route_path):
             self._serve_index(head_only=True)
@@ -65,6 +82,32 @@ class LocalHandler(SimpleHTTPRequestHandler):
 
         static_target = pathlib.Path(self.translate_path(route_path))
         return not static_target.exists()
+
+    def _resolve_polis_index(self, route_path: str) -> pathlib.Path | None:
+        if not route_path.startswith("/polis/"):
+            return None
+
+        # Keep /polis on the SPA route.
+        trimmed = route_path.rstrip("/")
+        if trimmed == "/polis":
+            return None
+
+        # Asset requests (images/css/js/etc.) should be served normally.
+        if pathlib.PurePosixPath(route_path).suffix:
+            return None
+
+        candidate_dir = (PROJECT_ROOT / trimmed.lstrip("/")).resolve()
+        polis_root = (PROJECT_ROOT / "polis").resolve()
+        try:
+            candidate_dir.relative_to(polis_root)
+        except ValueError:
+            return None
+
+        if not candidate_dir.is_dir():
+            return None
+
+        index_file = candidate_dir / "index.html"
+        return index_file if index_file.exists() else None
 
     def _serve_index(self, head_only: bool = False) -> None:
         self._serve_file(INDEX_FILE, head_only=head_only, fallback_error="Missing index.html")

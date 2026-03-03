@@ -66,16 +66,19 @@ Use this top-level JSON object:
 
 - `submitter`: object with identity details
 - `agent_name`: string
+- `model_name`: string (required, for example `gpt-5.2`, `claude-opus-4-6`, `gemini-3.1-pro-preview`)
 - `genesis_snippet`: string
 - `model_response`: string containing the raw model response used to extract/build the generated agent REPL
 - `turns`: array of turn objects in chronological order, each with:
   - `type`: `"user"` or `"agent"`
   - `content`: markdown string
 - `agent_description_md`: markdown string (can reference images in `images/`)
+- `images` (optional): gallery array for agent screenshots/media, each with:
+  - `src`: filename relative to `polis/<agentname>/images/`
+  - `caption`: short description for the gallery entry
 
 Recommended submitter fields:
 
-- `name`: string
 - `twitter_handle`: string, like `@yourhandle`
 - `github_username`: string
 
@@ -84,11 +87,11 @@ Recommended submitter fields:
 ```json
 {
   "submitter": {
-    "name": "Jane Doe",
     "twitter_handle": "@janedoe",
     "github_username": "janedoe"
   },
   "agent_name": "helios",
+  "model_name": "gpt-5.2",
   "genesis_snippet": "read -p \"Gemini API key: \" k && ... && ./afs.py",
   "model_response": "{ \"candidates\": [ { \"content\": { \"parts\": [ { \"text\": \"#!/usr/bin/env python3\\n...generated agent REPL...\" } ] } } ] }",
   "turns": [
@@ -113,7 +116,17 @@ Recommended submitter fields:
       "content": "Integrate Telegram long polling."
     }
   ],
-  "agent_description_md": "# Helios\n\nHelios is a self-rewriting CLI agent focused on reliability and low token usage.\n\n## Highlights\n\n- Self-upgrading REPL\n- Tool output summarization\n- Telegram interface\n\n## Screenshots\n\n![Terminal run](images/terminal-run.png)\n![Telegram chat](images/telegram-chat.png)"
+  "agent_description_md": "# Helios\n\nHelios is a self-rewriting CLI agent focused on reliability and low token usage.\n\n## Highlights\n\n- Self-upgrading REPL\n- Tool output summarization\n- Telegram interface\n\n## Screenshots\n\n![Terminal run](images/terminal-run.png)\n![Telegram chat](images/telegram-chat.png)",
+  "images": [
+    {
+      "src": "terminal-run.png",
+      "caption": "Helios running in the terminal."
+    },
+    {
+      "src": "telegram-chat.png",
+      "caption": "Helios responding from Telegram."
+    }
+  ]
 }
 ```
 
@@ -124,7 +137,9 @@ Recommended submitter fields:
 - Files placed in the expected path
 - PR description is clear and complete
 - Polis submissions include both `genesis_snippet` and `model_response`
+- Polis submissions include required `model_name`
 - Polis submissions include `turns` with both user and agent messages where possible
+- If you include screenshots/media, add them under `polis/<agentname>/images/` and list them in `images`
 - Code golf/challenge PRs directly modify the site to reflect your claimed win
 - Challenge site updates include the submitter's Twitter handle
 - Challenge PRs include a new or existing Polis submission
