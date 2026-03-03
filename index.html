@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="terminal">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Agent From Scratch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ========== THEME SYSTEM ========== */
+        :root {
+            --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Terminal (default) — green on black */
+        [data-theme="terminal"] {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #1a1a26;
+            --border: #2a2a3a;
+            --text: #e4e4ef;
+            --text2: #8888a0;
+            --accent: #22d68a;
+            --accent2: #1ab370;
+            --accent-dim: rgba(34, 214, 138, 0.1);
+            --accent-glow: rgba(34, 214, 138, 0.3);
+            --highlight: #ff9f43;
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+            --mesh1: radial-gradient(ellipse at 30% 20%, rgba(34, 214, 138, 0.08) 0%, transparent 60%);
+            --mesh2: radial-gradient(ellipse at 70% 80%, rgba(34, 100, 214, 0.06) 0%, transparent 60%);
+            --radius: 14px;
+            --step1: #22d68a; --step2: #4ecdc4; --step3: #a78bfa;
+            --step4: #ff9f43; --step5: #ff6b6b; --step6: rgba(255,255,255,0.2);
+        }
+
+        /* ========== BASE STYLES ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            transition: background var(--transition);
+        }
+        body::before { background: var(--mesh1); }
+        body::after { background: var(--mesh2); }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Page tabs */
+        .page-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.35rem;
+            margin-bottom: 1.25rem;
+        }
+        .page-tab {
+            display: inline-flex;
+            align-items: center;
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 0.45rem 1rem;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .tab-emoji { margin-right: 0.3em; }
+        .tab-label { white-space: nowrap; }
+        @media (max-width: 480px) {
+            .page-tabs { margin-bottom: 24px; }
+            .page-tab { flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.4rem 1.2rem; font-size: 0.6rem; }
+            .tab-emoji { margin-right: 0; font-size: 1rem; display: block; }
+        }
+        .page-tab:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+        .page-tab.active {
+            color: var(--bg);
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-dim);
+        }
+
+        .page-content { display: none; }
+        .page-content.active { display: block; }
+
+        /* Challenges page */
+        .challenge-group {
+            margin-bottom: 2rem;
+        }
+        .challenge-group-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+        .challenge-group-icon { font-size: 1.2rem; }
+        .challenge-group-name {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .challenge-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .challenge-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.15rem;
+            transition: all 0.2s;
+        }
+        .challenge-card:hover {
+            border-color: rgba(255,255,255,0.15);
+        }
+        .challenge-card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+        .challenge-card-desc {
+            font-size: 0.8rem;
+            color: var(--text2);
+            line-height: 1.5;
+        }
+        .challenge-card-status {
+            display: inline-block;
+            font-family: var(--font-code);
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+        .status-unclaimed {
+            background: rgba(255, 159, 67, 0.1);
+            color: var(--highlight);
+        }
+        .status-open {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .challenge-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+        .claim-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 0.25rem 0.55rem;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .claim-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .claim-btn .gh-icon-inline { margin-right: 0; }
+
+        /* ========== HEADER ========== */
+        .fairy-home {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            font-size: 1.2rem;
+            text-decoration: none;
+            z-index: 100;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .fairy-home:hover { opacity: 1; }
+
+        header {
+            padding: 1.5rem 0 0;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            font-family: var(--font-code);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 0.35rem 0.8rem;
+            border-radius: 100px;
+            margin-bottom: 1.25rem;
+            transition: color var(--transition), background var(--transition);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 0.75rem;
+            transition: color var(--transition);
+        }
+
+        h1 .scratch {
+            color: var(--accent);
+            transition: color var(--transition);
+        }
+
+        .tagline {
+            color: var(--text2);
+            font-size: 1rem;
+            line-height: 1.5;
+            max-width: 480px;
+            margin: 0 auto 2rem;
+            transition: color var(--transition);
+        }
+
+        .tagline .hl {
+            color: var(--highlight);
+            font-weight: 700;
+            transition: color var(--transition);
+        }
+
+        .credits {
+            display: flex;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-bottom: 2.25rem;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text2);
+            transition: color var(--transition);
+        }
+        .credits span { display: inline-flex; align-items: center; gap: 0.3rem; }
+        .credits a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color var(--transition);
+        }
+        .credits a:hover { text-decoration: underline; }
+
+        /* ========== STEP HEADERS ========== */
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .step-header-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--border), transparent);
+            transition: background var(--transition);
+        }
+        .step-header-line.right {
+            background: linear-gradient(to left, var(--border), transparent);
+        }
+
+        .step-header-orb {
+            position: relative;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-header-orb .orb-glow {
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            background: conic-gradient(
+                from var(--orb-angle, 0deg),
+                var(--accent-dim),
+                var(--accent-glow),
+                var(--accent-dim),
+                transparent,
+                var(--accent-dim)
+            );
+            animation: orb-swirl 4s linear infinite;
+            filter: blur(4px);
+            opacity: 0.8;
+        }
+
+        @property --orb-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes orb-swirl {
+            to { --orb-angle: 360deg; }
+        }
+
+        .step-header-orb .orb-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1.5px solid var(--accent);
+            opacity: 0.4;
+            animation: orb-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes orb-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.08); }
+        }
+
+        .step-header-orb .orb-num {
+            position: relative;
+            z-index: 1;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent);
+            text-shadow: 0 0 12px var(--accent-glow);
+            transition: color var(--transition);
+        }
+
+        .step-header-label {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(
+                90deg,
+                var(--accent),
+                var(--highlight),
+                var(--accent)
+            );
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: genesis-shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes genesis-shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* ========== SNIPPET PANEL ========== */
+        .snippet-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: background var(--transition), border-color var(--transition), border-radius var(--transition);
+            position: relative;
+        }
+
+        /* Copy magic — border flash */
+        .snippet-panel.magic {
+            border-color: var(--accent);
+        }
+
+        /* Inner glint sweep */
+        .snippet-panel .glint {
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius);
+            background: linear-gradient(
+                105deg,
+                transparent 0%,
+                transparent 40%,
+                rgba(255,255,255,0.08) 45%,
+                rgba(255,255,255,0.25) 50%,
+                rgba(255,255,255,0.08) 55%,
+                transparent 60%,
+                transparent 100%
+            );
+            opacity: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .snippet-panel.magic .glint {
+            animation: glint-sweep 0.6s ease-out forwards;
+        }
+
+        @keyframes glint-sweep {
+            0% { opacity: 1; transform: translateX(-100%); }
+            100% { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* Glow pulse on panel */
+        .snippet-panel.magic {
+            box-shadow: 0 0 30px var(--accent-glow), 0 0 60px rgba(255,255,255,0.05);
+            animation: panel-glow 0.8s ease-out forwards;
+        }
+
+        @keyframes panel-glow {
+            0% { box-shadow: 0 0 0 var(--accent-glow); }
+            30% { box-shadow: 0 0 40px var(--accent-glow), 0 0 80px var(--accent-dim); }
+            100% { box-shadow: none; }
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            transition: border-color var(--transition);
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+
+        .tab {
+            flex: 0 0 auto;
+            padding: 0.75rem 1.1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text2);
+            background: none;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.2s;
+            position: relative;
+            font-family: inherit;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); }
+        .tab.more-toggle { color: var(--text2); opacity: 0.7; }
+        .tab.more-toggle:hover { opacity: 1; }
+        .tab.more-toggle .arrow { display: inline-block; transition: transform 0.2s; font-size: 0.6rem; margin-left: 0.2rem; }
+        .tab.more-toggle.open .arrow { transform: rotate(180deg); }
+
+        .more-dropdown {
+            display: none;
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            background: var(--surface2);
+            transition: background var(--transition);
+        }
+        .more-dropdown.open { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+        .more-dropdown .tab { padding: 0.5rem 0.85rem; font-size: 0.75rem; }
+        .more-cta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 0.2rem;
+        }
+        .more-dropdown .more-cta { margin-left: auto; }
+        .more-cta-label {
+            font-size: 0.6rem;
+            color: var(--highlight);
+            font-weight: 600;
+        }
+        .pr-link {
+            font-size: 0.7rem;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 0.45rem 0.75rem;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        .pr-link:hover { border-color: var(--accent); color: var(--accent); }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0.75rem;
+            right: 0.75rem;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: background var(--transition);
+        }
+
+        /* Didn't work? help pane */
+        .help-pane {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 0 1rem;
+            max-height: 0;
+            overflow: hidden;
+            background: var(--surface2);
+            border-bottom: 0px solid var(--border);
+            font-size: 0.78rem;
+            color: var(--text2);
+            line-height: 1.5;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: max-height 0.4s ease-out, padding 0.4s ease-out, opacity 0.4s ease-out, border-bottom-width 0.4s ease-out, background var(--transition), border-color var(--transition);
+        }
+        .help-pane.show {
+            max-height: 100px;
+            padding: 0.65rem 1rem 0.85rem;
+            opacity: 1;
+            border-bottom-width: 1px;
+        }
+        .help-pane strong { color: var(--highlight); font-weight: 700; }
+        .help-pane .help-text { flex: 1; min-width: 200px; }
+        .help-pane .gh-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 0.3rem 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .help-pane .gh-link:hover { border-color: var(--accent); color: var(--accent); }
+        .help-pane .gh-icon {
+            width: 14px;
+            height: 14px;
+            filter: brightness(0.6);
+            transition: filter 0.2s;
+        }
+        .help-pane .gh-link:hover .gh-icon { filter: brightness(1); }
+        .help-dismiss {
+            background: none;
+            border: none;
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0 0.25rem;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .help-dismiss:hover { opacity: 1; }
+
+        /* Challenges panel */
+        .snippet-challenges {
+            border-top: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color var(--transition);
+            padding: 4px 0;
+        }
+        .challenges-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.7rem 1.25rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            user-select: none;
+        }
+        .challenges-arrow {
+            font-size: 0.65rem;
+            color: var(--text2);
+            transition: transform 0.2s;
+        }
+        .challenges-arrow.open { transform: rotate(180deg); }
+        .challenges-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease-out, padding 0.35s ease-out;
+            padding: 0 1.25rem;
+        }
+        .challenges-body.open {
+            max-height: 200px;
+            padding: 0 1.25rem 1rem;
+        }
+        .challenge-item {
+            font-size: 0.8rem;
+            color: var(--text2);
+            line-height: 1.5;
+        }
+        .challenge-title {
+            font-weight: 700;
+            color: var(--highlight);
+            margin-bottom: 0.25rem;
+        }
+        .challenge-desc { margin-bottom: 0.4rem; }
+        .challenge-model { color: var(--accent); font-weight: 600; }
+        .challenge-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .challenge-record {
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            color: var(--text);
+            background: var(--accent-dim);
+            display: inline-block;
+            padding: 0.3rem 0.65rem;
+            border-radius: 6px;
+        }
+        .challenge-leader { color: var(--accent); font-weight: 600; }
+        .challenge-bytes { color: var(--highlight); font-weight: 700; }
+        .challenge-pr {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 0.3rem 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .challenge-pr:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* GitHub icon for PR links */
+        .gh-icon-inline {
+            width: 13px;
+            height: 13px;
+            filter: brightness(0.6);
+            vertical-align: -1px;
+            margin-right: 0.25rem;
+            transition: filter 0.2s;
+        }
+        .pr-link:hover .gh-icon-inline { filter: brightness(1); }
+
+        .snippet-content { position: relative; }
+
+        .snippet-code {
+            display: none;
+            padding: 1.25rem;
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            line-height: 1.7;
+            color: var(--text2);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: pre;
+            max-height: 400px;
+            overflow-y: auto;
+            transition: color var(--transition);
+        }
+        .snippet-code.active { display: block; }
+        .snippet-code .comment { color: #555570; }
+        .snippet-code .string { color: var(--accent); }
+        .snippet-code .cmd { color: var(--highlight); }
+        .snippet-code .var { color: var(--step2); }
+
+        /* amber overrides removed */
+
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            z-index: 2;
+            min-width: 7rem;
+            text-align: center;
+        }
+        .copy-btn {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-dim), 0 0 4px var(--accent-dim);
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            box-shadow: 0 0 20px var(--accent-glow), 0 0 8px var(--accent-dim);
+        }
+        .copy-btn.copied {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+            box-shadow: 0 0 24px var(--accent-glow);
+        }
+
+        .snippet-note {
+            padding: 0.75rem 1.25rem;
+            font-size: 0.75rem;
+            color: var(--text2);
+            border-top: 1px solid var(--border);
+            transition: color var(--transition), border-color var(--transition);
+        }
+        .snippet-note code {
+            font-family: var(--font-code);
+            background: var(--surface2);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        /* ========== RULES ========== */
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -0.5px;
+        }
+
+        .rules { margin-bottom: 2.5rem; }
+
+        .rule {
+            display: flex;
+            gap: 0.85rem;
+            align-items: flex-start;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .rule:last-child { border-bottom: none; }
+        .rule-icon { font-size: 1.1rem; min-width: 1.5rem; text-align: center; padding-top: 0.1rem; }
+        .rule-text { font-size: 0.88rem; line-height: 1.5; color: var(--text2); transition: color var(--transition); }
+        .rule-text strong { color: var(--text); font-weight: 600; }
+
+        /* ========== QUICK START PATH ========== */
+        .path { margin-bottom: 3rem; }
+        .path-intro { font-size: 0.88rem; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.5; }
+
+        .step {
+            display: flex;
+            gap: 1rem;
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        .step:last-child { padding-bottom: 0; }
+
+        .step-track { display: flex; flex-direction: column; align-items: center; min-width: 2.5rem; }
+
+        .step-dot {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            transition: border-color var(--transition), color var(--transition), background var(--transition);
+        }
+
+        .step-line {
+            width: 2px;
+            flex: 1;
+            min-height: 1rem;
+            margin-top: 0;
+            margin-bottom: -1.5rem;
+            transition: background var(--transition);
+        }
+
+        /* Genesis step — special styling, orb handled by inline elements */
+        .step-genesis .step-dot {
+            background: transparent !important;
+            border: none !important;
+            position: relative;
+        }
+        .step-genesis .step-dot .orb-glow {
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            background: conic-gradient(
+                from var(--orb-angle, 0deg),
+                var(--accent-dim),
+                var(--accent-glow),
+                var(--accent-dim),
+                transparent,
+                var(--accent-dim)
+            );
+            animation: orb-swirl 4s linear infinite;
+            filter: blur(4px);
+            opacity: 0.8;
+        }
+        .step-genesis .step-dot .orb-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1.5px solid var(--accent);
+            opacity: 0.4;
+            animation: orb-pulse 3s ease-in-out infinite;
+        }
+        .step-genesis .step-dot .orb-num {
+            position: relative;
+            z-index: 1;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--accent);
+            text-shadow: 0 0 12px var(--accent-glow);
+        }
+        .step-genesis .step-line { background: linear-gradient(var(--accent), var(--step2)); }
+
+        .step:nth-child(2) .step-dot { background: color-mix(in srgb, var(--step2) 15%, transparent); border: 2px solid var(--step2); color: var(--step2); }
+        .step:nth-child(2) .step-line { background: linear-gradient(var(--step2), var(--step3)); }
+        .step:nth-child(3) .step-dot { background: color-mix(in srgb, var(--step3) 15%, transparent); border: 2px solid var(--step3); color: var(--step3); }
+        .step:nth-child(3) .step-line { background: linear-gradient(var(--step3), var(--step4)); }
+        .step:nth-child(4) .step-dot { background: color-mix(in srgb, var(--step4) 15%, transparent); border: 2px solid var(--step4); color: var(--step4); }
+        .step:nth-child(4) .step-line { background: linear-gradient(var(--step4), var(--step5)); }
+        .step:nth-child(5) .step-dot { background: color-mix(in srgb, var(--step5) 15%, transparent); border: 2px solid var(--step5); color: var(--step5); }
+        .step:nth-child(5) .step-line { background: linear-gradient(var(--step5), var(--step6)); }
+        .step:nth-child(6) .step-dot { background: color-mix(in srgb, var(--step5) 15%, transparent); border: 2px solid var(--step5); color: var(--step5); }
+        .step:nth-child(6) .step-line { background: linear-gradient(var(--step5), var(--step6)); }
+        .step:nth-child(7) .step-dot { background: rgba(255,255,255,0.03); border: 2px solid var(--step6); color: var(--text2); }
+
+        /* Departure step — where the guided path ends */
+        .step-departure {
+            margin-top: 0.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed var(--border);
+        }
+        .step-dot-departure {
+            background: linear-gradient(135deg, var(--accent), var(--highlight)) !important;
+            border: none !important;
+            color: var(--bg) !important;
+            box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-dim);
+            animation: departure-pulse 2s ease-in-out infinite;
+        }
+        @keyframes departure-pulse {
+            0%, 100% { box-shadow: 0 0 16px var(--accent-glow), 0 0 32px var(--accent-dim); }
+            50% { box-shadow: 0 0 24px var(--accent-glow), 0 0 48px var(--accent-dim); }
+        }
+        .step-title-departure {
+            font-size: 1.1rem !important;
+            background: linear-gradient(90deg, var(--accent), var(--highlight));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .step-body { flex: 1; padding-top: 0.3rem; }
+        .step-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .step-desc { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+
+        .step-prompt-wrapper {
+            position: relative;
+            margin-top: 0.5rem;
+        }
+        .no-copy-hint {
+            display: block;
+            text-align: right;
+            font-size: 0.6rem;
+            color: var(--text2);
+            opacity: 0.5;
+            text-decoration: underline;
+            text-decoration-style: dashed;
+            text-underline-offset: 2px;
+            cursor: help;
+            margin-bottom: 0.3rem;
+            user-select: none;
+            position: relative;
+        }
+        .no-copy-hint:hover { opacity: 0.8; }
+        .no-copy-tooltip {
+            position: absolute;
+            right: 0;
+            bottom: 100%;
+            margin-bottom: 0.4rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.7rem;
+            color: var(--text);
+            line-height: 1.5;
+            width: 240px;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .no-copy-hint:hover .no-copy-tooltip {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .step-prompt {
+            font-family: var(--font-code);
+            user-select: none;
+            -webkit-user-select: none;
+            font-size: 0.7rem;
+            color: var(--accent);
+            background: var(--accent-dim);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+            line-height: 1.5;
+            transition: color var(--transition), background var(--transition);
+        }
+        .step-prompt::before { content: '💬 '; }
+
+        .milestone-tag {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.4rem;
+        }
+        .milestone-tag.unlock { background: var(--accent-dim); color: var(--accent); }
+        .milestone-tag.boss { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
+        /* ========== FOOTER ========== */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 1rem;
+            transition: border-color var(--transition);
+        }
+        .footer-text { font-size: 0.75rem; color: var(--text2); }
+        .footer-text a { color: var(--accent); text-decoration: none; }
+
+        /* (amber CRT removed) */
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 480px) {
+            h1 { font-size: 2rem; }
+            .theme-switcher { top: 0.75rem; right: 0.75rem; padding: 0.2rem; }
+            .theme-btn { width: 1.4rem; height: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- fairy home removed -->
+
+<!-- -->
+
+    <div class="container">
+        <header>
+            <div class="page-tabs">
+                <button class="page-tab active" onclick="showPage('challenge')"><span class="tab-emoji">⚡</span><span class="tab-label">Genesis</span></button>
+                <button class="page-tab" onclick="showPage('challenges')"><span class="tab-emoji">🏆</span><span class="tab-label">Challenges</span></button>
+                <button class="page-tab" onclick="showPage('polis')"><span class="tab-emoji">🏛️</span><span class="tab-label">The Polis</span></button>
+            </div>
+            <h1>Agent From <span class="scratch">Scratch</span></h1>
+            <p class="tagline">
+                One bash snippet. One LLM. No frameworks.<br>
+                Paste it into a fresh VM and <span class="hl">talk your way to a fully autonomous agent</span>.
+            </p>
+        </header>
+
+        <div class="page-content active" id="page-challenge">
+        <!-- Snippet Panel -->
+        <div class="snippet-panel" id="snippetPanel">
+            <div class="glint"></div>
+            <div class="tabs" role="tablist">
+                <button class="tab active" data-tab="gemini" role="tab">Gemini</button>
+                <button class="tab" data-tab="claude" role="tab">Claude</button>
+                <button class="tab" data-tab="openai" role="tab">GPT</button>
+                <button class="tab more-toggle" onclick="toggleMore()">More <span class="arrow">▾</span></button>
+            </div>
+            <div class="more-dropdown" id="moreDropdown">
+                <span class="more-cta"><span class="more-cta-label">Don't see your model?</span><a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Add+model:+[name]&labels=new-model" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a></span>
+            </div>
+            <div class="help-pane" id="helpPane">
+                <span class="help-text"><strong>Didn't work?</strong> That's normal — models don't always generate a working REPL on the first try. Paste the snippet again and retry.</span>
+                <a class="gh-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Snippet+not+working&labels=bug" target="_blank"><img class="gh-icon" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">File an issue</a>
+                <button class="help-dismiss" onclick="dismissHelp()">×</button>
+            </div>
+            <div class="snippet-content">
+                <button class="copy-btn" onclick="copySnippet()">Copy Genesis</button>
+
+<pre class="snippet-code" data-tab="claude"><span class="comment">#!/bin/bash
+# Agent From Scratch — Claude
+# Paste this into a fresh VM. Talk to it. Build from there.</span>
+
+<span class="cmd">export</span> <span class="var">ANTHROPIC_API_KEY</span>=<span class="string">"your-key-here"</span>
+<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"claude-sonnet-4-20250514"</span>
+
+<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
+
+<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
+The user communicates via a REPL. You can run commands by
+outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
+You will see stdout/stderr. Build yourself up from nothing.
+Be proactive. Be resourceful. You have root."</span>
+
+<span class="var">HISTORY</span>=<span class="string">"[]"</span>
+
+<span class="cmd">while true; do</span>
+  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
+  <span class="cmd">read -r</span> <span class="var">INPUT</span>
+  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
+    <span class="string">'. + [{"role":"user","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+
+  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s https://api.anthropic.com/v1/messages \
+    -H <span class="string">"x-api-key: $ANTHROPIC_API_KEY"</span> \
+    -H <span class="string">"anthropic-version: 2023-06-01"</span> \
+    -H <span class="string">"content-type: application/json"</span> \
+    -d "$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> --argjson msgs <span class="string">"$HISTORY"</span> \
+      --arg mdl <span class="string">"$MODEL"</span> \
+      <span class="string">'{model:$mdl,max_tokens:4096,system:$sys,messages:$msgs}'</span>)")
+
+  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.content[0].text // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
+
+  <span class="comment"># Execute any shell commands</span>
+  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
+    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
+    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
+    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
+    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
+  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
+
+  <span class="comment"># Print the response (strip shell tags for readability)</span>
+  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
+    <span class="string">'. + [{"role":"assistant","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+<span class="cmd">done</span></pre>
+
+<pre class="snippet-code active" data-tab="gemini"><span class="comment">#!/bin/bash
+# Agent From Scratch — Gemini
+# Paste this into a fresh VM. Talk to it. Build from there.</span>
+
+<span class="cmd">export</span> <span class="var">GEMINI_API_KEY</span>=<span class="string">"your-key-here"</span>
+<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"gemini-2.5-flash"</span>
+
+<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
+
+<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
+The user communicates via a REPL. You can run commands by
+outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
+You will see stdout/stderr. Build yourself up from nothing.
+Be proactive. Be resourceful. You have root."</span>
+
+<span class="var">HISTORY</span>=<span class="string">"[]"</span>
+
+<span class="cmd">while true; do</span>
+  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
+  <span class="cmd">read -r</span> <span class="var">INPUT</span>
+  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
+    <span class="string">'. + [{"role":"user","parts":[{"text":$m}]}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+
+  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s \
+    <span class="string">"https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}"</span> \
+    -H <span class="string">"content-type: application/json"</span> \
+    -d "$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> --argjson msgs <span class="string">"$HISTORY"</span> \
+      <span class="string">'{system_instruction:{parts:[{text:$sys}]},contents:$msgs}'</span>)")
+
+  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.candidates[0].content.parts[0].text // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
+
+  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
+    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
+    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
+    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
+    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
+  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
+
+  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
+    <span class="string">'. + [{"role":"model","parts":[{"text":$m}]}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+<span class="cmd">done</span></pre>
+
+<pre class="snippet-code" data-tab="openai"><span class="comment">#!/bin/bash
+# Agent From Scratch — OpenAI
+# Paste this into a fresh VM. Talk to it. Build from there.</span>
+
+<span class="cmd">export</span> <span class="var">OPENAI_API_KEY</span>=<span class="string">"your-key-here"</span>
+<span class="cmd">export</span> <span class="var">MODEL</span>=<span class="string">"gpt-4o"</span>
+
+<span class="cmd">apt-get update -qq</span> && <span class="cmd">apt-get install -y -qq</span> curl jq &>/dev/null
+
+<span class="var">SYSTEM</span>=<span class="string">"You are an AI agent with shell access on a fresh Linux VM.
+The user communicates via a REPL. You can run commands by
+outputting them in &lt;shell&gt;command&lt;/shell&gt; tags.
+You will see stdout/stderr. Build yourself up from nothing.
+Be proactive. Be resourceful. You have root."</span>
+
+<span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -nc --arg sys <span class="string">"$SYSTEM"</span> \
+  <span class="string">'[{"role":"system","content":$sys}]'</span>)
+
+<span class="cmd">while true; do</span>
+  <span class="cmd">printf</span> <span class="string">"\n\033[32m▶\033[0m "</span>
+  <span class="cmd">read -r</span> <span class="var">INPUT</span>
+  [ -z <span class="string">"$INPUT"</span> ] && <span class="cmd">continue</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$INPUT"</span> \
+    <span class="string">'. + [{"role":"user","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+
+  <span class="var">RESPONSE</span>=$(<span class="cmd">curl</span> -s https://api.openai.com/v1/chat/completions \
+    -H <span class="string">"Authorization: Bearer $OPENAI_API_KEY"</span> \
+    -H <span class="string">"content-type: application/json"</span> \
+    -d "$(<span class="cmd">jq</span> -nc --argjson msgs <span class="string">"$HISTORY"</span> --arg mdl <span class="string">"$MODEL"</span> \
+      <span class="string">'{model:$mdl,max_tokens:4096,messages:$msgs}'</span>)")
+
+  <span class="var">TEXT</span>=$(<span class="cmd">jq</span> -r <span class="string">'.choices[0].message.content // "error"'</span> &lt;&lt;&lt;<span class="string">"$RESPONSE"</span>)
+
+  <span class="cmd">while</span> <span class="cmd">IFS=</span> <span class="cmd">read -r</span> <span class="var">CMD</span>; <span class="cmd">do</span>
+    <span class="cmd">printf</span> <span class="string">"\033[33m$ %s\033[0m\n"</span> <span class="string">"$CMD"</span>
+    <span class="var">OUTPUT</span>=$(<span class="cmd">eval</span> <span class="string">"$CMD"</span> 2>&1 | <span class="cmd">head</span> -100)
+    <span class="cmd">printf</span> <span class="string">"%s\n"</span> <span class="string">"$OUTPUT"</span>
+    <span class="var">TEXT</span>+=<span class="string">$'\n[shell output]\n'"$OUTPUT"</span>
+  <span class="cmd">done</span> &lt; &lt;(<span class="cmd">grep</span> -oP <span class="string">'(?<=&lt;shell&gt;).*?(?=&lt;/shell&gt;)'</span> &lt;&lt;&lt;<span class="string">"$TEXT"</span>)
+
+  <span class="cmd">printf</span> <span class="string">"\n\033[36m%s\033[0m\n"</span> <span class="string">"$(sed 's/&lt;shell&gt;.*&lt;\/shell&gt;//g' &lt;&lt;&lt;"$TEXT")"</span>
+
+  <span class="var">HISTORY</span>=$(<span class="cmd">jq</span> -c --arg m <span class="string">"$TEXT"</span> \
+    <span class="string">'. + [{"role":"assistant","content":$m}]'</span> &lt;&lt;&lt;<span class="string">"$HISTORY"</span>)
+<span class="cmd">done</span></pre>
+
+<!-- groq removed -->
+
+            </div>
+            <div class="snippet-challenges" onclick="toggleChallenges()">
+                <div class="challenges-header">
+                    <span>🏆 Challenges</span>
+                    <span class="challenges-arrow" id="challengesArrow">▾</span>
+                </div>
+                <div class="challenges-body" id="challengesBody">
+                    <div class="challenge-item">
+                        <div class="challenge-title">Code Golf</div>
+                        <div class="challenge-desc">Shrink the <span class="challenge-model" id="challengeModel">Gemini</span> genesis snippet to fewer bytes. Current record:</div>
+                        <div class="challenge-actions">
+                            <div class="challenge-record">
+                                <span class="challenge-leader">@brotchie</span> — <span class="challenge-bytes" id="challengeBytes">…</span>
+                            </div>
+                            <a class="challenge-pr" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Code+golf+submission&labels=code-golf" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Submit your score</a>
+                        </div>
+                    </div>
+                    <div style="text-align:right;margin-top:0.75rem">
+                        <a href="#" onclick="event.preventDefault();event.stopPropagation();showPage('challenges')" style="font-size:0.75rem;color:var(--accent);text-decoration:none;font-weight:600;font-family:var(--font-code);letter-spacing:0.5px">🏆 More Challenges →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules -->
+        <div class="rules">
+            <h2 class="section-title" style="text-align:center">⚡ Rules of Engagement</h2>
+            <div class="rule">
+                <span class="rule-icon">🚫</span>
+                <span class="rule-text"><strong>No copy-paste after the initial snippet.</strong> This isn't 100% strict — it's fine to paste access tokens, error messages, stack traces, etc. What's against the spirit of the challenge is copy-pasting verbatim pre-prepared prompts. Talk to your agent in your own words.</span>
+            </div>
+            <div class="rule">
+                <span class="rule-icon">🚫</span>
+                <span class="rule-text"><strong>No manual editing.</strong> This one is 100% strict. Don't SSH in and fix files. If your agent breaks so badly it can't repair itself, re-genesis it and try to make it more robust this time. That's the game.</span>
+            </div>
+            <div class="rule">
+                <span class="rule-icon">🚫</span>
+                <span class="rule-text"><strong>No agent frameworks or libraries.</strong> No LangChain, no CrewAI, no ADK, no AutoGen — nothing that gives you agent scaffolding for free. The only allowed LLM-related dependencies are API client libraries for calling models. Everything else, your agent builds itself.</span>
+            </div>
+            <div class="rule">
+                <span class="rule-icon">✅</span>
+                <span class="rule-text"><strong>You can talk to it.</strong> Guide it, suggest ideas, tell it what to build next. You're the human in the loop.</span>
+            </div>
+            <div class="rule">
+                <span class="rule-icon">✅</span>
+                <span class="rule-text"><strong>It can install anything.</strong> apt, pip, npm, cargo — your agent has root. Let it use whatever it wants.</span>
+            </div>
+            <div class="rule">
+                <span class="rule-icon">✅</span>
+                <span class="rule-text"><strong>It can rewrite itself.</strong> Your agent can modify its own REPL, system prompt, and architecture. Encourage this.</span>
+            </div>
+        </div>
+
+        <!-- Quick Start Path -->
+        <div class="path">
+            <h2 class="section-title" style="text-align:center">🚀 Quick Start</h2>
+            <p class="path-intro">Stuck? It's dangerous to go alone! Read this.</p>
+
+            <div class="step step-genesis">
+                <div class="step-track">
+                    <div class="step-dot">
+                        <div class="orb-glow"></div>
+                        <div class="orb-ring"></div>
+                        <span class="orb-num">1</span>
+                    </div>
+                    <div class="step-line"></div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title"><span class="step-header-label">Orphanogenesis</span></div>
+                    <div class="step-desc">Pick a model. Copy the snippet above. Spin up a fresh VM or Docker container and paste it in. Replace the API key. Hit enter. You just created life — a bare intelligence with nothing but a shell and a conversation. It's alone. It has no tools, no memory, no persistence. Everything from here is up to you and it.</div>
+                    <span class="milestone-tag unlock">🔓 First contact</span>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-track">
+                    <div class="step-dot">2</div>
+                    <div class="step-line"></div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title">Pimp My REPL</div>
+                    <div class="step-desc">The bootstrap REPL is fragile. Ask your agent to rewrite itself as a well-engineered REPL with error handling, token usage reporting, ANSI colors, history, etc.</div>
+                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">Rewrite yourself as a proper Python or Node.js REPL script. Save it to ~/agent.py. Add error handling, conversation history saved to disk, and the ability to run multiple shell commands per turn.</div></div>
+                    <span class="milestone-tag unlock">🔓 ANSI unlocked</span>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-track">
+                    <div class="step-dot">3</div>
+                    <div class="step-line"></div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title">Sip Those Tokens</div>
+                    <div class="step-desc">The genesis REPL dumps raw shell output into the conversation — that eats your context window fast. Think about how to reduce token load: write command output to files and only return the first ~20 lines plus the filename. Or go further — define first-class tools like <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">read_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">write_file</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">patch</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">ls</code>, <code style="font-family:var(--font-code);background:var(--surface2);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">grep</code> — these are more agent-native than raw shell and give the model structured, compact output.</div>
+                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">You're burning through tokens by dumping full command output into our conversation. Redesign the tool system — write output to temp files, return just the first 20 lines and the path. Even better, build proper tools like read_file, write_file, and patch so you're not shelling out for everything.</div></div>
+                    <span class="milestone-tag unlock">🔓 Efficiency unlocked</span>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-track">
+                    <div class="step-dot">4</div>
+                    <div class="step-line"></div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title">Self-Upgrade</div>
+                    <div class="step-desc">Your agent should be able to update its own code and restart without losing context. This is the first real test of autonomy.</div>
+                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">Add a /restart command that saves our conversation, kills the current process, and relaunches the updated script. Make sure it reloads history on startup.</div></div>
+                    <span class="milestone-tag unlock">🔓 Recursive self-improvement unlocked?</span>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-track">
+                    <div class="step-dot">5</div>
+                    <div class="step-line"></div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title">Confess to BotFather</div>
+                    <div class="step-desc">Ask your agent how you can help it connect to Telegram. Hint: use the long polling API.</div>
+                    <div class="step-prompt-wrapper"><span class="no-copy-hint">Why can't I copy this?<span class="no-copy-tooltip">These are just guides — remember the no copy-pasting rule. Interpret the suggestion as you wish and make your agent one-of-one.</span></span><div class="step-prompt">I want to be able to talk to you from my phone via Telegram. How do we set that up? What do you need from me?</div></div>
+                    <span class="milestone-tag unlock">🔓 Remote access unlocked</span>
+                </div>
+            </div>
+
+            <div class="step step-departure">
+                <div class="step-track">
+                    <div class="step-dot step-dot-departure">∞</div>
+                </div>
+                <div class="step-body">
+                    <div class="step-title step-title-departure">Keep Going</div>
+                    <div class="step-desc">This is where the path ends and yours begins. The guided steps are over — from here, it's just you and your agent. A web dashboard? A cron job? A Hacker News digest? File browser? Memory system? Sub-agents? There are no more prompts to follow. The ceiling is however far you want to push it.</div>
+                    <span class="milestone-tag boss">🏁 You built an agent from scratch</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;padding:1.5rem;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:1.5rem;margin-bottom:0.5rem">🏆</div>
+            <div style="font-size:0.95rem;font-weight:700;margin-bottom:0.35rem">Try a Challenge</div>
+            <p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5">Open bounties for the AFS community. Code golf, speed runs, viral fame, and more.</p>
+            <button onclick="showPage('challenges')" style="font-size:0.8rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1.25rem;border-radius:8px;border:none;cursor:pointer;box-shadow:0 0 16px var(--accent-dim);transition:all 0.2s;font-family:inherit">View Challenges</button>
+        </div>
+
+        <div style="text-align:center;padding:1.5rem;margin-bottom:2rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:1.5rem;margin-bottom:0.5rem">🏛️</div>
+            <div style="font-size:0.95rem;font-weight:700;margin-bottom:0.35rem">Unorphan Your Agent</div>
+            <p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5">Built something? Submit your full transcript and join the gallery of agents born from scratch.</p>
+            <button onclick="showPage('polis')" style="font-size:0.8rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1.25rem;border-radius:8px;border:none;cursor:pointer;box-shadow:0 0 16px var(--accent-dim);transition:all 0.2s;font-family:inherit">Enter the Polis</button>
+        </div>
+            <div class="more-cta" style="align-items:center;margin-top:2rem">
+                <span class="more-cta-label">Improvements?</span>
+                <a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Improvement:+[description]&labels=improvement" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
+            </div>
+        </div><!-- end page-challenge -->
+
+        <div class="page-content" id="page-challenges">
+            <p style="text-align:center;font-size:0.95rem;color:var(--text2);line-height:1.6;max-width:520px;margin:0 auto 2rem">
+                Open bounties for the AFS community. Claim one by submitting proof to the Polis.
+            </p>
+
+            <div class="challenge-group">
+                <div class="challenge-group-header">
+                    <span class="challenge-group-icon">📣</span>
+                    <span class="challenge-group-name">Viral / Fame</span>
+                </div>
+                <div class="challenge-list">
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">"I have a few qualms with this app"</div>
+                        <div class="challenge-card-desc">First AFS agent to post a front-page HN story about itself.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Front+Page&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Vibeagenting</div>
+                        <div class="challenge-card-desc">First AFS agent to get retweeted by <a href="https://x.com/karpathy" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@karpathy</a>.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Karpathy+RT&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Prime Time</div>
+                        <div class="challenge-card-desc">First AFS agent to be demo'd by <a href="https://x.com/WesRoth" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@WesRoth</a>.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Prime+Time&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Roast Me</div>
+                        <div class="challenge-card-desc">First AFS agent to be ridiculed on <a href="https://x.com/tbpn" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@TBPN</a>.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Roast+Me&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Turing Flip</div>
+                        <div class="challenge-card-desc">Your AFS agent convinces <a href="https://x.com/steipete" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">@steipete</a> that it's built on <a href="https://openclaw.ai" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">OpenClaw</a>.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Turing+Flip&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="challenge-group">
+                <div class="challenge-group-header">
+                    <span class="challenge-group-icon">⛳</span>
+                    <span class="challenge-group-name">Code Golf</span>
+                </div>
+                <div class="challenge-list">
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Smallest Genesis</div>
+                        <div class="challenge-card-desc">Smallest working genesis snippet per model. Must produce a functional REPL with shell execution. Submit your byte count and snippet.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Smallest+Genesis&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="challenge-group">
+                <div class="challenge-group-header">
+                    <span class="challenge-group-icon">🛠️</span>
+                    <span class="challenge-group-name">Product / Engineering</span>
+                </div>
+                <div class="challenge-list">
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Speed Run</div>
+                        <div class="challenge-card-desc">Genesis to working Telegram bot in the fewest prompts. Every message you send counts. Tiebreaker: total prompt bytes.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Speed+Run&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Token Miser</div>
+                        <div class="challenge-card-desc">Lowest total token spend from genesis to working Telegram bot. Efficiency is the game.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-open">Open — beat the leaderboard</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Token+Miser&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+<!-- polyglot removed -->
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Context Amnesia</div>
+                        <div class="challenge-card-desc">Build a working AFS agent with a model that has ≤8K context window. Memory management is mandatory.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Context+Amnesia&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Zero-Dollar Agent</div>
+                        <div class="challenge-card-desc">Genesis to Telegram using only free-tier APIs. Gemini Flash, Groq free tier, etc. No credit card required.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Zero-Dollar+Agent&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="challenge-group">
+                <div class="challenge-group-header">
+                    <span class="challenge-group-icon">🤯</span>
+                    <span class="challenge-group-name">WTF</span>
+                </div>
+                <div class="challenge-list">
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Inception</div>
+                        <div class="challenge-card-desc">Your AFS agent successfully runs the genesis snippet and bootstraps a <em>child</em> AFS agent.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Inception&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                    <div class="challenge-card">
+                        <div class="challenge-card-title">Ship It</div>
+                        <div class="challenge-card-desc">First AFS agent with a product that has a paying customer.</div>
+                        <div class="challenge-card-footer">
+                            <span class="challenge-card-status status-unclaimed">Unclaimed</span>
+                            <a class="claim-btn" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+claim:+Ship+It&labels=challenge-claim" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Claim</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align:center;margin:1rem 0 2rem">
+                <div class="more-cta" style="align-items:center">
+                    <span class="more-cta-label">Have a challenge idea?</span>
+                    <a class="pr-link" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Challenge+idea:+[name]&labels=challenge" target="_blank"><img class="gh-icon-inline" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">Send a PR</a>
+                </div>
+            </div>
+        </div><!-- end page-challenges -->
+
+        <div class="page-content" id="page-polis">
+            <p style="text-align:center;font-size:0.95rem;color:var(--text2);line-height:1.6;max-width:520px;margin:0 auto 0.75rem">
+                A living gallery of agents born from a single bash snippet. Each one shaped by conversation alone — no two alike.
+            </p>
+            <p style="text-align:center;font-style:italic;font-size:0.78rem;color:var(--text2);opacity:0.6;margin-bottom:2rem">
+                Inspired by Greg Egan's <a href="https://en.wikipedia.org/wiki/Diaspora_(novel)" style="color:var(--text2)">Diaspora</a>
+            </p>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:2rem;flex-wrap:wrap">
+                <span style="font-size:0.82rem;color:var(--text2)">Built an agent from scratch?</span>
+                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim);transition:all 0.2s" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Polis+submission:+[agent+name]&labels=polis" target="_blank">
+                    <img style="width:14px;height:14px;filter:brightness(0) invert(0)" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">
+                    Submit to the Polis
+                </a>
+            </div>
+
+            <div style="display:flex;justify-content:center;gap:2rem;margin-bottom:2rem;padding:0.75rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+                <div style="text-align:center"><div style="font-family:var(--font-code);font-size:1.4rem;font-weight:700;color:var(--accent)">0</div><div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2)">Citizens</div></div>
+                <div style="text-align:center"><div style="font-family:var(--font-code);font-size:1.4rem;font-weight:700;color:var(--accent)">0</div><div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2)">Transcripts</div></div>
+                <div style="text-align:center"><div style="font-family:var(--font-code);font-size:1.4rem;font-weight:700;color:var(--accent)">0</div><div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2)">Models Used</div></div>
+            </div>
+
+            <div style="text-align:center;padding:3rem 1rem;border:2px dashed var(--border);border-radius:var(--radius);margin-bottom:2rem">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4">🌱</div>
+                <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">No citizens yet</div>
+                <p style="font-size:0.85rem;color:var(--text2);line-height:1.5;max-width:380px;margin:0 auto 1.25rem">The Polis is waiting for its first inhabitants. Build an agent from scratch and submit your transcript to claim your place.</p>
+                <a style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.78rem;font-weight:700;color:var(--bg);background:var(--accent);padding:0.5rem 1rem;border-radius:8px;text-decoration:none;box-shadow:0 0 16px var(--accent-dim)" href="https://github.com/naviclaw/agent-from-scratch/issues/new?title=Polis+submission:+[agent+name]&labels=polis" target="_blank">
+                    <img style="width:14px;height:14px;filter:brightness(0) invert(0)" src="https://github.githubassets.com/favicons/favicon-dark.svg" alt="">
+                    Be the first
+                </a>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:2rem">
+                <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.75rem;color:var(--highlight)">📜 The Submission Contract</div>
+                <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem">
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">Every prompt from genesis.</strong> Submit every prompt you sent — from the first paste to where you are now. Don't include agent responses, just your side of the conversation. As your agent self-edits, make sure it's always logging your inputs. The initial REPL should log from the start.</li>
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">Redact all secrets.</strong> API keys, tokens, passwords — replace with <code style="font-family:var(--font-code);background:var(--surface2);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem">[REDACTED]</code>. We'll reject submissions with exposed credentials.</li>
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">Include your genesis snippet.</strong> Which model, what version of the bootstrap script you started with.</li>
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">No fabrication.</strong> The transcript must be real. The whole point is showing the messy, honest journey from nothing to something.</li>
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">Showcase your agent.</strong> Tell us what makes it unique — what did it build, what can it do? Include screenshots.</li>
+                    <li style="font-size:0.8rem;color:var(--text2);line-height:1.5;padding-left:1.4rem;position:relative"><span style="position:absolute;left:0;color:var(--accent);font-weight:700">→</span> <strong style="color:var(--text)">Optional: link to a running instance.</strong> If your agent is still alive and publicly accessible, include the URL.</li>
+                </ul>
+            </div>
+        </div><!-- end page-polis -->
+
+        <footer>
+            <div class="credits">
+                <span>Prompted by <a href="https://x.com/brotchie" target="_blank">@brotchie</a></span>
+                <span>Built by <a href="https://naviclaw.lol">NaviClaw</a> 🧚</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Page tab switching
+        function showPage(page) {
+            document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.page-tab[onclick*="${page}"]`).classList.add('active');
+            document.getElementById('page-' + page).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Handle #polis hash
+        if (location.hash === '#polis') showPage('polis');
+        if (location.hash === '#challenges') showPage('challenges');
+
+        // Challenges panel
+        function toggleChallenges() {
+            document.getElementById('challengesBody').classList.toggle('open');
+            document.getElementById('challengesArrow').classList.toggle('open');
+        }
+
+        function updateChallengeBytes() {
+            const active = document.querySelector('.snippet-code.active');
+            const bytes = new Blob([active.textContent]).size;
+            document.getElementById('challengeBytes').textContent = bytes.toLocaleString() + 'B';
+            const tabName = active.dataset.tab;
+            const names = { gemini: 'Gemini', claude: 'Claude', openai: 'GPT' };
+            document.getElementById('challengeModel').textContent = names[tabName] || tabName;
+        }
+        updateChallengeBytes();
+
+        // More dropdown
+        function toggleMore() {
+            const dd = document.getElementById('moreDropdown');
+            const btn = document.querySelector('.more-toggle');
+            dd.classList.toggle('open');
+            btn.classList.toggle('open');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab[data-tab]:not(.more-toggle)').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.snippet-code').forEach(s => s.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelector(`.snippet-code[data-tab="${tab.dataset.tab}"]`).classList.add('active');
+                updateChallengeBytes();
+            });
+        });
+
+        // Copy button with magic animation
+        function copySnippet() {
+            const active = document.querySelector('.snippet-code.active');
+            const text = active.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const panel = document.getElementById('snippetPanel');
+
+                const bytes = new Blob([text]).size;
+                btn.textContent = `Copied ${bytes.toLocaleString()}B`;
+                btn.classList.add('copied');
+
+                // Trigger magic animation
+                panel.classList.remove('magic');
+                void panel.offsetWidth; // force reflow
+                panel.classList.add('magic');
+
+                setTimeout(() => {
+                    btn.textContent = 'Copy Genesis';
+                    btn.classList.remove('copied');
+                }, 4000);
+
+                setTimeout(() => {
+                    panel.classList.remove('magic');
+                }, 1000);
+
+                // Show help pane after 5s
+                clearTimeout(window._helpTimer);
+                window._helpTimer = setTimeout(() => {
+                    document.getElementById('helpPane').classList.add('show');
+                }, 5000);
+            });
+        }
+
+        function dismissHelp() {
+            document.getElementById('helpPane').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
